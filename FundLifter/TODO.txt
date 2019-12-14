@@ -1,0 +1,14 @@
+
+Clean up Firebase storage bucket, and delete Firebase Database content
+Add authentication and restrict access to Firebase Storage bucket
+
+Update MainView FundDB time after modal dialog box has been dismissed
+  
+
+Questions:
+- In UpdateDBModalView: Why aren't we forced to do .message="..." from main thread?
+  (as in AppDataObservable)
+- In UpdateDBModalView I cannot update the view when executing from onAppear
+  I need to do the HTTP request and UI element update in init() of the Observable
+  However I am able to update in AppDataObservable.initialize when called from onAppear
+  Difference is that I do all work on a global GCD queue (whereas the DBUpdate executes from a Firebase Storage thread)
