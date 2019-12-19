@@ -281,6 +281,7 @@ public class AppDataObservable: ObservableObject {
         AppDataObservable._type2Funds[fundInfo._type]!.append(fundInfo)
       } // End of while, retrieving FundInfo
       
+      AppDataObservable._allFunds.sort { $0.typeAndName < $1.typeAndName }
       print("Done reading all funds, total: \(AppDataObservable._allFunds.count)")
       print("   nonNullCounts: \(FLBinaryIOUtils.nonNullCounts), nullCounts: \(FLBinaryIOUtils.nullCounts)")
       
@@ -292,7 +293,10 @@ public class AppDataObservable: ObservableObject {
         }
         self?.message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(s)"
         for p in AppDataObservable._portfolios.keys.sorted() {
-          let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
+          var dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
+          if p == FLConstants.PORTFOLIO_ARCS {
+            dp4ModelP = DP4WModel(fqName: p, displayName: p)
+          }
           self?.portfolios.append(dp4ModelP)
           self?.portfoliosHM[p] = dp4ModelP
           self?.dp4ModelHM[p] = dp4ModelP

@@ -18,9 +18,8 @@ struct MainView: View {
       VStack {
         List {
           ForEach(settings.portfolios) { dp4W in
-            NavigationLink(destination: PortfolioView(portfolioName: dp4W._name).environmentObject(self.settings)) {
-              DP4WRowView(title: dp4W._name, dp4ModelKey: dp4W.id).environmentObject(self.settings)
-//                entry: dp4W).environmentObject(self.settings)
+            NavigationLink(destination: PortfolioView(portfolioName: dp4W.displayName).environmentObject(self.settings)) {
+              DP4WRowView(displayName: dp4W.displayName, dp4ModelKey: dp4W.id).environmentObject(self.settings)
             }
           }
         }

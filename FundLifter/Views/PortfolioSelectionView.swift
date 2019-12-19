@@ -14,9 +14,13 @@ struct PortfolioSelectionView: View {
   @State var items: [String] = [String]()
   @State var selections: [String] = [String]()
   public var portfolioName: String
+  public var useFQName: Bool = false
   
   init(portfolioName: String) {
     self.portfolioName = portfolioName
+    if portfolioName == FLConstants.PORTFOLIO_ARCS {
+      useFQName = true
+    }
   }
 
   var body: some View {
@@ -37,12 +41,12 @@ struct PortfolioSelectionView: View {
       Button(action: {
         AppDataObservable._portfolios[self.portfolioName] = [D_FundInfo]()
         for fname in self.selections {
-          let typeAndName: String = "\(self.portfolioName).\(fname)"
+          let typeAndName = self.useFQName ? fname : "\(self.portfolioName).\(fname)"
           let fundInfo = AppDataObservable._typeAndName2Fund[typeAndName]!
           AppDataObservable._portfolios[self.portfolioName]!.append(fundInfo)
         }
         AppDataObservable._portfolios[self.portfolioName]!.sort { (a1: D_FundInfo, a2: D_FundInfo)->Bool in
-          return a1._nameMS < a2._nameMS
+          return a1.typeAndName < a2.typeAndName
         }
         let s = PortfolioIO.write()
         let s1 = "Writing portfolio file, result is: \(s)"
@@ -64,13 +68,23 @@ struct PortfolioSelectionView: View {
       DispatchQueue.main.async { [self] in
         // Add portfolio funds in beginning of list and selected
         for fi in AppDataObservable._portfolios[self.portfolioName]! {
-          self.items.append(fi._nameMS)
-          self.selections.append(fi._nameMS)
+          let name = self.useFQName ? fi.typeAndName : fi._nameMS
+          self.items.append(name)
+          self.selections.append(name)
         }
+
         // Then add all other funds of type 'portfolioName', eg 'PPM'
-        for fi in AppDataObservable._type2Funds[self.portfolioName]! {
-          if !self.items.contains(fi._nameMS) {
-            self.items.append(fi._nameMS)
+        if self.portfolioName == FLConstants.PORTFOLIO_ARCS {
+          for fi in AppDataObservable._allFunds {
+            if !self.items.contains(fi.typeAndName) {
+              self.items.append(fi.typeAndName)
+            }
+          }
+        } else {
+          for fi in AppDataObservable._type2Funds[self.portfolioName]! {
+            if !self.items.contains(fi._nameMS) {
+              self.items.append(fi._nameMS)
+            }
           }
         }
       }

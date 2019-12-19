@@ -12,8 +12,13 @@ struct PortfolioView: View {
   @EnvironmentObject var settings: AppDataObservable
   @State private var show_modal: Bool = false
   public var portfolioName: String
-  public var funds: [DP4WModel] { AppDataObservable._portfolios[portfolioName]!.map {
-    DataModelsCalculator.getDP4WModelForFund(fund: $0)
+  public var funds: [DP4WModel] {
+    AppDataObservable._portfolios[portfolioName]!.map {
+      var dp4 = self.settings.dp4ModelHM[$0.typeAndName]!
+      if portfolioName == FLConstants.PORTFOLIO_ARCS {
+        dp4.displayName = $0.typeAndName
+      }
+      return dp4
     }
   }
   
@@ -26,8 +31,7 @@ struct PortfolioView: View {
       VStack {
         List {
           ForEach(funds)	 { fundDP4WModel in
-            DP4WRowView(title: fundDP4WModel._name, dp4ModelKey: fundDP4WModel.id)
-//            DP4WRowView(entry: fundDP4WModel)
+            DP4WRowView(displayName: fundDP4WModel.displayName, dp4ModelKey: fundDP4WModel.id)
           }
         }
         Spacer()

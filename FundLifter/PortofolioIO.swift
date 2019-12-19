@@ -13,6 +13,7 @@ public struct PortfolioIO {
 
   private static func initializeEmptyPortfolios() {
     // Initialize all portfolios
+    AppDataObservable._portfolios[FLConstants.PORTFOLIO_ARCS] = [D_FundInfo]()
     for t in D_FundInfo.TYPES {
       AppDataObservable._portfolios[t] = [D_FundInfo]()
     }

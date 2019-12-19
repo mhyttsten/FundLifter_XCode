@@ -10,6 +10,8 @@ import Foundation
 
 
 public struct FLConstants {
+ 
+  public static let PORTFOLIO_ARCS = "All Categories"
   
   public static let DB_FILENAME_GCS = "backend/fundinfo-db-master.bin"
   public static let DB_FILENAME_LOCAL_ZIP = "fundinfo-db-master.bin.zip"

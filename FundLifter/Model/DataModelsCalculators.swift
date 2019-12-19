@@ -11,7 +11,7 @@ import Foundation
 public class DataModelsCalculator {
   
   public static func getDP4WModelForFund(fund: D_FundInfo, startDate: Date=Date()) -> DP4WModel {
-    var rv = DP4WModel(id: fund.typeAndName, name: fund._nameMS)
+    var rv = DP4WModel(fqName: fund.typeAndName, displayName: fund._nameMS)
 
     let weeksYYMMDD = dateLastFridaysAsYYMMDD(count: 4, inclusive: false)
     let wDPDs = getDPDayValuesForDates(fund: fund, datesYYMMDD: weeksYYMMDD)
@@ -67,7 +67,7 @@ public class DataModelsCalculator {
     let (vMAverage, vMPercentValid) = getAccumulated(values: mVal)
     let (vYAverage, vYPercentValid) = getAccumulated(values: yVal)
 
-    var dp4w = DP4WModel(id: name, name: name)
+    var dp4w = DP4WModel(fqName: name, displayName: name)
     guard vWAverage.count == 4 else {
       return dp4w
     }

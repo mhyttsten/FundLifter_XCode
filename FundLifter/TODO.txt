@@ -1,10 +1,8 @@
-Delete that commit
 FL: Create default portfolio
 FL: Store (and fetch) portfolio file from GCS
 Increase emacs font size
-Delete unneeded GitHub repos
 Move code from open_spiel_yourstuff
-Make Firebase and open_spiel play together
+AllAboutSwift: GitHub & XCode, make Firebase and open_spiel play together
 Install latest TensorFlow Swift release
 FL: Secure your GCP cloud
 

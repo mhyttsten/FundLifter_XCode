@@ -10,13 +10,13 @@ import Foundation
 
 public struct DP4WModel: Identifiable {
   
-  init(id: String, name: String) {
-    self._name = name
-    self.id = id
+  init(fqName: String, displayName: String) {
+    self.displayName = displayName
+    self.id = fqName
   }
   
   public var id = ""
-  public var _name = ""
+  public var displayName = ""
   
   public var dp0M: Double? = nil
   public var dp0MValidityPercent: Double = 0.0
