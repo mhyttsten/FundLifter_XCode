@@ -18,25 +18,10 @@ public struct DP4WModel: Identifiable {
   public var id = ""
   public var displayName = ""
   
-  public var dp0M: Double? = nil
-  public var dp0MValidityPercent: Double = 0.0
-
-  public var dp0W: Double? = nil
-  public var dp0WValidityPercent: Double = 0.0
-  public var dp1W: Double? = nil
-  public var dp1WValidityPercent: Double = 0.0
-  public var dp2W: Double? = nil
-  public var dp2WValidityPercent: Double = 0.0
-  public var dp3W: Double? = nil
-  public var dp3WValidityPercent: Double = 0.0
-  
-  public var dp1M: Double? = nil
-  public var dp1MValidityPercent: Double = 0.0
-  public var dp2M: Double? = nil
-  public var dp2MValidityPercent: Double = 0.0
-  public var dp3M: Double? = nil
-  public var dp3MValidityPercent: Double = 0.0
-  
+  public var dpWs = [Double?]()
+  public var dpWsValidityPercent = [Double?]()
+  public var dpMs = [Double?]()
+  public var dpMsValidityPercent = [Double?]()
   public var dpY2D: Double? = nil
   public var dpY2DValidityPercent: Double = 0.0
 }

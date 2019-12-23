@@ -6,9 +6,9 @@ import Zip
 public class AppDataObservable: ObservableObject {
   @Published var message = "Initializing"
   @Published var fundDBCreationTime = "No Fund DB File"
+
   @Published var portfolios = [DP4WModel]()
-  @Published var portfoliosHM = [String: DP4WModel]()
-  @Published var dp4ModelHM = [String: DP4WModel]()
+  @Published var dp4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
  
   public static var _allFunds = [D_FundInfo]()
   public static var _type2Funds = [String: [D_FundInfo]]()
@@ -285,21 +285,23 @@ public class AppDataObservable: ObservableObject {
       print("Done reading all funds, total: \(AppDataObservable._allFunds.count)")
       print("   nonNullCounts: \(FLBinaryIOUtils.nonNullCounts), nullCounts: \(FLBinaryIOUtils.nullCounts)")
       
-      let s = PortfolioIO.read()
-      
+      let portfoliosReadStr = PortfolioIO.read()
+
       DispatchQueue.main.async { [weak self] in
+        // Create DP4W for all funds
         for fi in AppDataObservable._allFunds {
           self?.dp4ModelHM[fi.typeAndName] = DataModelsCalculator.getDP4WModelForFund(fund: fi)
         }
-        self?.message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(s)"
+        
+        // Initialize status message on # funds & portfolios
+        self?.message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(portfoliosReadStr)"
+        
+        // Display the portfolios
         for p in AppDataObservable._portfolios.keys.sorted() {
-          var dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
-          if p == FLConstants.PORTFOLIO_ARCS {
-            dp4ModelP = DP4WModel(fqName: p, displayName: p)
-          }
+          let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
           self?.portfolios.append(dp4ModelP)
-          self?.portfoliosHM[p] = dp4ModelP
           self?.dp4ModelHM[p] = dp4ModelP
+//          print("\(p): \(self?.dp4ModelHM[p]!.dpWs.count)")
         }
       }
     }

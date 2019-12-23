@@ -24,6 +24,10 @@ struct MainView: View {
           }
         }
 
+        NavigationLink(destination: TestView(portfolioName: D_FundInfo.TYPE_PPM)) {
+          Text("TestView").bold()
+        }
+
         Text("\(settings.message)").bold()  // .padding(.bottom, 50)
         Text("\(settings.fundDBCreationTime)")
         Button(action: {
@@ -34,7 +38,7 @@ struct MainView: View {
           UpdateDBModalView().environmentObject(self.settings)
         }
       }
-      .navigationBarTitle(Text("Main: \(dateLastFridayAsYYMMDD(inclusive: false))"))
+      .navigationBarTitle(Text("Main: \(dateLastFridaysAsYYMMDD()[0])"))
       // Cannot do this because of bug when pushing 'Back'
 //              .navigationBarItems(trailing:
 //                NavigationLink(destination: LogView()) {

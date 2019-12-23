@@ -28,4 +28,5 @@ public struct FLConstants {
   public static func fileLogFile() -> String { fileDocuments().appending("/FundLifterLog.txt") }
   public static func fileDB() -> String { fileDocuments().appending("/\(DB_FILENAME_LOCAL)") }
   public static func filePortfolio() -> String { fileDocuments().appending("/\(PORTFOLIO_LOCAL)") }
+  
 }

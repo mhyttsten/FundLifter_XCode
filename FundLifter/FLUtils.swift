@@ -23,7 +23,7 @@ public func doubleOptToColor(value: Double?, percent: Double?) -> Color {
   return Color.green
 }
 
-///--------------------------------------------------
+//--------------------------------------------------
 
 public func dateAsYYMMDD(date: Date) -> String {
   let df = DateFormatter()
@@ -42,17 +42,45 @@ public func dateFromYYMMDD(dateYYMMDD: String) -> Date {
   return date
 }
 
-public func dateIsFriday(dateYYMMDD: String) -> Bool {
-  let date = dateFromYYMMDD(dateYYMMDD: dateYYMMDD)
-  let dow = Calendar.current.component(.weekday, from: date)
-  return dow == 6
+//--------------------------------------------------
+
+fileprivate var fridaysAsYYMMDD: [String]? = nil
+public func dateLastFridaysAsYYMMDD() -> [String] {
+  if fridaysAsYYMMDD == nil {
+    let ds = dateLastFridays(count: 6, inclusive: false).map { dateAsYYMMDD(date: $0) }
+    fridaysAsYYMMDD = ds
+  }
+  return fridaysAsYYMMDD!
 }
 
-public func dateLastFridaysAsYYMMDD(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [String] {
-  let r = dateLastFridays(count: count, startAt: startAt, inclusive: inclusive).map { dateAsYYMMDD(date: $0) }
-  return r
+fileprivate var monthsAsYYMMDD: [String]? = nil
+public func dateLastMonthsAsYYMMDD() -> [String] {
+  if monthsAsYYMMDD == nil {
+    let ds = dateLastMonths(count: 6, inclusive: false).map { dateAsYYMMDD(date: $0) }
+    monthsAsYYMMDD = ds
+  }
+  return monthsAsYYMMDD!
 }
-public func dateLastFridays(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [Date] {
+
+// *****************************************************************
+
+private func dateLastMonths(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [Date] {
+  let calendar = Calendar.current
+  var cdate = calendar.startOfDay(for: startAt)  // Weird, returns 10am for Hawaii (so midnight Hawaii == UTC+10?)
+  
+  var rv = [Date]()
+  var count = count
+  while count > 0 {
+    cdate = dateGetClosestFridayFromDate(fromDate: cdate, inclusive: inclusive)
+    rv.append(cdate)
+    cdate = Calendar.current.date(byAdding: .month, value: -1, to: cdate)!
+    count -= 1
+  }
+  
+  return rv
+}
+
+fileprivate func dateLastFridays(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [Date] {
   precondition(count>0, "Count was 0")
   var r = [Date]()
   let lastFriday = dateLastFriday(startAt: startAt, inclusive: inclusive)
@@ -65,11 +93,19 @@ public func dateLastFridays(count: Int, startAt: Date=Date(), inclusive: Bool=tr
   }
   return r
 }
-public func dateLastFridayAsYYMMDD(startAt: Date=Date(), inclusive: Bool=true) -> String {
+
+
+fileprivate func dateIsFriday(dateYYMMDD: String) -> Bool {
+  let date = dateFromYYMMDD(dateYYMMDD: dateYYMMDD)
+  let dow = Calendar.current.component(.weekday, from: date)
+  return dow == 6
+}
+
+fileprivate func dateLastFridayAsYYMMDD(startAt: Date=Date(), inclusive: Bool=true) -> String {
   let lastFriday = dateLastFriday(startAt: startAt, inclusive: inclusive)
   return dateAsYYMMDD(date: lastFriday)
 }
-public func dateLastFriday(startAt: Date=Date(), inclusive: Bool=true) -> Date {
+fileprivate func dateLastFriday(startAt: Date=Date(), inclusive: Bool=true) -> Date {
   let dowFriday = 6
 //  var date = Date()
 //  startOfDay
@@ -96,27 +132,7 @@ public func dateLastFriday(startAt: Date=Date(), inclusive: Bool=true) -> Date {
 }
 
 
-public func dateLastMonthsAsYYMMDD(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [String] {
-  let r = dateLastMonths(count: count, startAt: startAt, inclusive: inclusive).map { dateAsYYMMDD(date: $0) }
-  return r
-}
-public func dateLastMonths(count: Int, startAt: Date=Date(), inclusive: Bool=true) -> [Date] {
-  let calendar = Calendar.current
-  var cdate = calendar.startOfDay(for: startAt)  // Weird, returns 10am for Hawaii (so midnight Hawaii == UTC+10?)
-  
-  var rv = [Date]()
-  var count = count
-  while count > 0 {
-    cdate = dateGetClosestFridayFromDate(fromDate: cdate, inclusive: inclusive)
-    rv.append(cdate)
-    cdate = Calendar.current.date(byAdding: .month, value: -1, to: cdate)!
-    count -= 1
-  }
-  
-  return rv
-}
-
-public func dateGetClosestFridayFromDate(fromDate: Date=Date(), inclusive: Bool=true) -> Date {
+fileprivate func dateGetClosestFridayFromDate(fromDate: Date=Date(), inclusive: Bool=true) -> Date {
   let fromDate = Calendar.current.startOfDay(for: fromDate)
   let dlf = dateLastFriday(startAt: fromDate, inclusive: inclusive)
   let dnf = Calendar.current.date(byAdding: .weekday, value: 7, to: dlf)!

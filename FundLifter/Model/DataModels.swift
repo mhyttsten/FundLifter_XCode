@@ -10,7 +10,8 @@ public class D_FundInfo {
   public static let TYPE_SEB = "SEB"
   public static let TYPE_SPP = "SPP"
   public static let TYPE_VGD = "VGD"
-  public static let TYPES = [ TYPE_SEB, TYPE_SPP, TYPE_VGD, TYPE_PPM ]
+//  public static let TYPE_ALL = "ALL"
+  public static let PORTFOLIO_TYPES = [ TYPE_SEB, TYPE_SPP, TYPE_VGD, TYPE_PPM ]
   
   public var id : String { "\(_type).\(_nameMS)" }
   public var typeAndName: String { "\(_type).\(_nameMS)" }

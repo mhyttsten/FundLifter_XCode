@@ -13,21 +13,34 @@ public class DataModelsCalculator {
   public static func getDP4WModelForFund(fund: D_FundInfo, startDate: Date=Date()) -> DP4WModel {
     var rv = DP4WModel(fqName: fund.typeAndName, displayName: fund._nameMS)
 
-    let weeksYYMMDD = dateLastFridaysAsYYMMDD(count: 4, inclusive: false)
+    let weeksYYMMDD = dateLastFridaysAsYYMMDD()
     let wDPDs = getDPDayValuesForDates(fund: fund, datesYYMMDD: weeksYYMMDD)
-    if let v = wDPDs[0]?._r1w { rv.dp0W = v; rv.dp0WValidityPercent = 1.0 }
-    if let v = wDPDs[1]?._r1w { rv.dp1W = v; rv.dp1WValidityPercent = 1.0 }
-    if let v = wDPDs[2]?._r1w { rv.dp2W = v; rv.dp2WValidityPercent = 1.0 }
-    if let v = wDPDs[3]?._r1w { rv.dp3W = v; rv.dp3WValidityPercent = 1.0 }
-
-    let monthsYYMMDD = dateLastMonthsAsYYMMDD(count: 4, inclusive: false)
+    for i in 0..<6 {
+      if wDPDs[i] != nil {
+        rv.dpWs.append(wDPDs[i]!._r1w)
+        rv.dpWsValidityPercent.append(1.0)
+        
+        if rv.dpY2D == nil && wDPDs[i]!._rYTDFund != nil {
+          rv.dpY2D = wDPDs[i]!._rYTDFund
+        }
+        
+      } else {
+        rv.dpWs.append(nil)
+        rv.dpWsValidityPercent.append(nil)
+      }
+    }
+        
+    let monthsYYMMDD = dateLastMonthsAsYYMMDD()
     let mDPDs = getDPDayValuesForDates(fund: fund, datesYYMMDD: monthsYYMMDD)
-    if let v = mDPDs[0]?._r1m {rv.dp0M = v; rv.dp0MValidityPercent = 1.0 }
-    if let v = mDPDs[1]?._r1m {rv.dp1M = v; rv.dp1MValidityPercent = 1.0 }
-    if let v = mDPDs[2]?._r1m {rv.dp2M = v; rv.dp2MValidityPercent = 1.0 }
-    if let v = mDPDs[3]?._r1m {rv.dp3M = v; rv.dp3MValidityPercent = 1.0 }
-    
-    if let v = wDPDs[0]?._rYTDFund {rv.dpY2D = v; rv.dpY2DValidityPercent = 1.0 }
+    for i in 0..<6 {
+      if let r1w = mDPDs[i]?._r1w {
+        rv.dpMs.append(r1w)
+        rv.dpMsValidityPercent.append(1.0)
+      } else {
+        rv.dpMs.append(nil)
+        rv.dpMsValidityPercent.append(nil)
+      }
+    }
     
     return rv
   }
@@ -35,27 +48,28 @@ public class DataModelsCalculator {
   public static func getDP4WModelForPortfolio(name: String, funds: [D_FundInfo]) -> DP4WModel {
     print("getDP4WModelForPortfolio: \(name)")
 
-    let datesWeeks =  dateLastFridaysAsYYMMDD(count: 4, inclusive: false)
-    print("...DatesWeeks: \(datesWeeks)")
-    let datesMonths = dateLastMonthsAsYYMMDD(count: 4, inclusive: false)
-    print("...DatesMonths: \(datesMonths)")
+    let datesWeeks =  dateLastFridaysAsYYMMDD()
+    print("   DatesWeeks: \(datesWeeks)")
+    let datesMonths = dateLastMonthsAsYYMMDD()
+    print("   DatesMonths: \(datesMonths)")
 
     var wVal = [[Double?]]()
     var mVal = [[Double?]]()
     var yVal = [[Double?]]()
+    
     for fi in funds {
       let wDPDs = getDPDayValuesForDates(fund: fi, datesYYMMDD: datesWeeks)
       guard wDPDs.count > 0 else {
         continue
       }
       
-      print("\(fi.typeAndName)")
-      print("...wDPDs: \(wDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
+      print("   \(fi.typeAndName)")
+      print("      wDPDs[\(wDPDs.count)]: \(wDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
       let wValF = wDPDs.map {  $0?._r1w != nil ? $0!._r1w : nil }
       wVal.append(wValF)
 
       let mDPDs = getDPDayValuesForDates(fund: fi, datesYYMMDD: datesMonths)
-      print("...mDPDs: \(mDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
+      print("      mDPDs[\(mDPDs.count)]: \(mDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
       let mValF = mDPDs.map {  $0?._r1w != nil ? $0!._r1m : nil }
       mVal.append(mValF)
       
@@ -63,54 +77,40 @@ public class DataModelsCalculator {
       yVal.append([yv])
     }
 
-    let (vWAverage, vWPercentValid) = getAccumulated(values: wVal)
-    let (vMAverage, vMPercentValid) = getAccumulated(values: mVal)
-    let (vYAverage, vYPercentValid) = getAccumulated(values: yVal)
+    var (vWAverage, vWPercentValid) = getAccumulated(values: wVal)
+    var (vMAverage, vMPercentValid) = getAccumulated(values: mVal)
+    var (vYAverage, vYPercentValid) = getAccumulated(values: yVal)
+
+    // If we have no funds registered for portfolio, fill in nils
+    if funds.count == 0 {
+      precondition(datesWeeks.count == datesMonths.count, "Count mismatch")
+      var dNils = [Double?]()
+      for _ in 0..<datesWeeks.count { dNils.append(nil) }
+      let dZeroes = Array(repeating: 0.0, count: datesWeeks.count)
+      vWAverage = dNils
+      vWPercentValid = dZeroes
+      vMAverage = dNils
+      vMPercentValid = dZeroes
+      vYAverage = [nil]
+      vYPercentValid = [0.0]
+    }
 
     var dp4w = DP4WModel(fqName: name, displayName: name)
-    guard vWAverage.count == 4 else {
-      return dp4w
-    }
-    
-    if vWAverage.count >= 1 {
-      dp4w.dp0W = vWAverage[0]
-      dp4w.dp0WValidityPercent =  vWPercentValid[0]
-    }
-    if vWAverage.count >= 2 {
-      dp4w.dp1W = vWAverage[1]
-      dp4w.dp1WValidityPercent =  vWPercentValid[1]
-    }
-    if vWAverage.count >= 3 {
-      dp4w.dp2W = vWAverage[2]
-      dp4w.dp2WValidityPercent =  vWPercentValid[2]
-    }
-    if vWAverage.count >= 4 {
-      dp4w.dp3W = vWAverage[3]
-      dp4w.dp3WValidityPercent =  vWPercentValid[3]
-    }
-    
-    if vMAverage.count >= 1 {
-      dp4w.dp0M = vMAverage[0]
-      dp4w.dp0MValidityPercent =  vMPercentValid[0]
-    }
-    if vMAverage.count >= 2 {
-      dp4w.dp1M = vMAverage[1]
-      dp4w.dp1MValidityPercent =  vMPercentValid[1]
-    }
-    if vMAverage.count >= 3 {
-      dp4w.dp2M = vMAverage[2]
-      dp4w.dp2MValidityPercent =  vMPercentValid[2]
-    }
-    if vMAverage.count >= 4 {
-      dp4w.dp3M = vMAverage[3]
-      dp4w.dp3MValidityPercent =  vMPercentValid[3]
-    }
-    
+    dp4w.dpWs = vWAverage
+    print("      fdpWs[\(dp4w.dpWs.count)]: \(dp4w.dpWs)")
+    dp4w.dpWsValidityPercent = vWPercentValid
+    print("      fdpWsVP[\(dp4w.dpWsValidityPercent.count)]: \(dp4w.dpWsValidityPercent)")
+    dp4w.dpMs = vMAverage
+    print("      fdpMs[\(dp4w.dpMs.count)]: \(dp4w.dpMs)")
+    dp4w.dpMsValidityPercent = vMPercentValid
+    print("      fdpMsVP[\(dp4w.dpMsValidityPercent.count)]: \(dp4w.dpMsValidityPercent)")
     if vYAverage.count >= 1 {
       dp4w.dpY2D = vYAverage[0]
       dp4w.dpY2DValidityPercent =  vYPercentValid[0]
     }
-    
+    print("      fdpY2D: \(dp4w.dpY2D)")
+    print("      fdpY2DVP: \(dp4w.dpY2DValidityPercent)")
+
     return dp4w
   }
   
@@ -162,15 +162,26 @@ public class DataModelsCalculator {
   public static func getDPDayValuesForDates(fund: D_FundInfo, datesYYMMDD: [String]) -> [D_FundDPDay?] {
     var r = [D_FundDPDay?]()
     let dpds = fund._dpDays
+    
+    var findex = 0
     for d in datesYYMMDD {
-      for i in (0..<dpds.count) {
+      var found = false
+
+      for i in findex..<dpds.count {
         if dpds[i]._dateYYMMDD == d {
           r.append(dpds[i])
+          findex += 1
+          found = true
           break
         } else if (dpds[i]._dateYYMMDD < d) {
           r.append(nil)
+          found = true
           break
         }
+      }
+      
+      if !found {
+        r.append(nil)
       }
     }
     return r

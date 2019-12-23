@@ -44,7 +44,7 @@ struct PortfolioView: View {
           PortfolioSelectionView(portfolioName: self.portfolioName).environmentObject(self.settings)
         }
       }
-      .navigationBarTitle(Text("\(portfolioName): \(dateLastFridayAsYYMMDD(inclusive: false))"))
+      .navigationBarTitle(Text("\(portfolioName): \(dateLastFridaysAsYYMMDD()[0])"))
 //      Text("End of list")
     }.onAppear {
     }

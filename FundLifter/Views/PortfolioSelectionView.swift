@@ -56,7 +56,6 @@ struct PortfolioSelectionView: View {
         DispatchQueue.main.async {
           let pname = self.portfolioName
           let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: pname, funds: AppDataObservable._portfolios[pname]!)
-          self.settings.portfoliosHM[pname] = dp4ModelP
           self.settings.dp4ModelHM[pname] = dp4ModelP
         }
         self.presentationMode.wrappedValue.dismiss()

@@ -101,6 +101,29 @@ Backburner - Things to try out
 
  /* SWIFT QUESTIONS
 
+ // Error cannot return ArraySlice for [String]
+ var a = ["a", "b", "c", "d"]
+ func foo() -> [String] {
+    return a[0..<2]
+ }
+ 
+ - Any more beautiful way to write this
+   if rv.dpY2D == nil && wDPDs[i]!._rYTDFund != nil {
+     rv.dpY2D = wDPDs[i]!._rYTDFund
+   }
+- Any more beautiful way to write this
+   let mValF = mDPDs.map {  $0?._r1w != nil ? $0!._r1m : nil }
+- How to init an array of Doubles containing nils? Below does not work
+   var dZeroes = Array(repeating: Double(nil), count: datesWeeks.count)
+
+
+ - What does this do if wDPDs[0] is nil?
+   rv.dpWs.append(wDPDs[0]?._r1w)
+ 
+ 
+- SwiftUI allows you to have properties without any explicit init and then you initialize
+  by doing TestView(portfolioName: D_FundInfo.TYPE_PPM). Is this a SwiftUI thing or a Swift thing?
+
  - print("\(.player(0).playerSymbol)")  // Ambiguous
  - if dict[key] != nil { ... }: Still does a full copy just to check if key exists I think
    Or should I assume that compiler optimizations would manage it? If so, is this better?
