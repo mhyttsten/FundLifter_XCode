@@ -15,6 +15,16 @@ public struct DP4WModel: Identifiable {
     self.id = fqName
   }
   
+  public var description: String {
+    return "\(id): \(displayName)" +
+      "\n   dpWs: \(doubleOptsToString(value: dpWs))" +
+      "\n   dpWsVP: \(doubleOptsToString(value: dpWsValidityPercent))" +
+      "\n   dpMs: \(doubleOptsToString(value: dpMs))" +
+      "\n   dpMsVP: \(doubleOptsToString(value: dpMsValidityPercent))" +
+      "\n   dpY2D:\(doubleOptToString(value: dpY2D))" +
+      "\n   dpY2DVP:\(String(format: "%0.2f", dpY2DValidityPercent))"
+  }
+  
   public var id = ""
   public var displayName = ""
   

@@ -9,6 +9,23 @@
 import Foundation
 import SwiftUI
 
+public func doubleToString(value: Double) -> String {
+  return String(format: "%0.2f", value)
+}
+public func doublesToString(value: [Double]) -> String {
+  var s = ""
+  for v in value {
+    s += String(format: "%0.2f", v) + ", "
+  }
+  return s
+}
+public func doubleOptsToString(value: [Double?]) -> String {
+  var s = ""
+  for v in value {
+    s += doubleOptToString(value: v) + ", "
+  }
+  return s
+}
 public func doubleOptToString(value: Double?) -> String {
   return value != nil ? String(format: "%0.2f", value!) : "-"
 }

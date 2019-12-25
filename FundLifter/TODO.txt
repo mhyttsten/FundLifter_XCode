@@ -1,4 +1,4 @@
-FL: Create default portfolio
+FL: 
 FL: Store (and fetch) portfolio file from GCS
 Increase emacs font size
 Move code from open_spiel_yourstuff

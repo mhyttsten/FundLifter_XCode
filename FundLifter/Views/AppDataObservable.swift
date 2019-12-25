@@ -10,6 +10,7 @@ public class AppDataObservable: ObservableObject {
   @Published var portfolios = [DP4WModel]()
   @Published var dp4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
  
+  public static var _allFundsDP4 = [DP4WModel]()
   public static var _allFunds = [D_FundInfo]()
   public static var _type2Funds = [String: [D_FundInfo]]()
   public static var _typeAndName2Fund = [String: D_FundInfo]()
@@ -24,7 +25,7 @@ public class AppDataObservable: ObservableObject {
       DispatchQueue.main.async { [weak self] in
         self?.fundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
       }
-      
+            
       // Read DB file data
       let (exists, data1, errorStr) = FLBinaryIOUtils.readFile(url: FLConstants.urlDB())
       if data1 == nil {
@@ -287,10 +288,15 @@ public class AppDataObservable: ObservableObject {
       
       let portfoliosReadStr = PortfolioIO.read()
 
+      for fi in AppDataObservable._allFunds {
+        AppDataObservable._allFundsDP4.append(DataModelsCalculator.getDP4WModelForFund(fund: fi))
+      }
+      // DataModelsCalculator.testPosition()
+
       DispatchQueue.main.async { [weak self] in
         // Create DP4W for all funds
-        for fi in AppDataObservable._allFunds {
-          self?.dp4ModelHM[fi.typeAndName] = DataModelsCalculator.getDP4WModelForFund(fund: fi)
+        for fi in AppDataObservable._allFundsDP4 {
+          self?.dp4ModelHM[fi.id] = fi
         }
         
         // Initialize status message on # funds & portfolios
@@ -305,5 +311,5 @@ public class AppDataObservable: ObservableObject {
         }
       }
     }
-  }
+  }  
 }

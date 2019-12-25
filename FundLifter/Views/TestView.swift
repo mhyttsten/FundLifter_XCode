@@ -18,16 +18,16 @@ import SwiftUI
 // Also print stats on how many 1M are missing, i.e # disqualified from list
 struct TestView: View {
   @State var quantity: Int = 6
+  @State var isShowing = false // toggle state
   public var portfolioName: String
   
   var body: some View {
     VStack {
-      //        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+      Toggle("Use returns", isOn: $isShowing)
       Stepper("Top Funds for Last: \(getTimeDescription())", value: $quantity, in: 1...13)
     }
     .onAppear {
       print("TestView.onAppear")
-      
     }
   }
   
