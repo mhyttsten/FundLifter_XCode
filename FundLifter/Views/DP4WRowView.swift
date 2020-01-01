@@ -16,54 +16,51 @@ struct DP4WRowView: View {
   init(displayName: String, dp4ModelKey: String) {
     self.displayName = displayName
     self.key = dp4ModelKey
+    print("DP4RowView.init: \(dp4ModelKey)")
   }
   
   var body: some View {
     VStack(alignment: .trailing) {
       HStack {
-        Text(displayName).font(.title)
+        Text(displayName).font(.body)
         Spacer()
-        Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[0]))")
-          .font(.title)
-          .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[0], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[0]))
+        Text("Y2D").font(.body)
+        Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpY2D))")
+          .font(.body)
+          .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpY2D, percent: settings.dp4ModelHM[key]!.dpY2DValidityPercent))
       }
       VStack {
         HStack {
+          Text("Ws").font(.subheadline)
           Spacer()
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpWs[0]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpWs[0], percent: settings.dp4ModelHM[key]!.dpWsValidityPercent[0]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpWs[1]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpWs[1], percent: settings.dp4ModelHM[key]!.dpWsValidityPercent[1]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpWs[2]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpWs[2], percent: settings.dp4ModelHM[key]!.dpWsValidityPercent[2]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpWs[3]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpWs[3], percent: settings.dp4ModelHM[key]!.dpWsValidityPercent[3]))
         }
         HStack {
+          Text("Ms").font(.subheadline)
           Spacer()
+          Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[0]))")
+            .font(.subheadline)
+            .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[0], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[0]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[1]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[1], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[1]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[2]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[2], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[2]))
           Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[3]))")
-            .font(.body)
+            .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[3], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[3]))
-          Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpMs[4]))")
-            .font(.body)
-            .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpMs[4], percent: settings.dp4ModelHM[key]!.dpMsValidityPercent[4]))
-
-          Text("|")
-            .font(.body)
-            .foregroundColor(.black)
-          Text("\(doubleOptToString(value: settings.dp4ModelHM[key]!.dpY2D))")
-            .font(.body)
-            .foregroundColor(doubleOptToColor(value: settings.dp4ModelHM[key]!.dpY2D, percent: settings.dp4ModelHM[key]!.dpY2DValidityPercent))
         }
       }
     }.onAppear {

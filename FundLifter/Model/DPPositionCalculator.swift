@@ -8,10 +8,13 @@
 
 import Foundation
 
-public struct DP4WModelPosition {
-  public let dp4Model: DP4WModel
+public struct DP4WModelPosition: Identifiable {
+  public var dp4Model: DP4WModel
+  public var id: String
+  public var isReturn = true
 
   // Return fields
+  public var y2dReturn = 0.0
   public var eachReturn = [Double]()
   public var totalReturn = 0.0
   public var averageReturn = 0.0
@@ -20,24 +23,33 @@ public struct DP4WModelPosition {
   // Position fields
   public var eachPosition = [Int]()
   public var averagePosition = 0.0
+  public var averagePositionDiscounted = 0.0
   
   public var description: String {
     return "dp4Model: \(dp4Model.id)..." +
       "\n   eachReturn: \(doublesToString(value: eachReturn))" +
-      "\n   tr: \(doubleToString(value: totalReturn))" +
+      "\n      tr: \(doubleToString(value: totalReturn))" +
       ", ar: \(doubleToString(value: averageReturn))" +
       ", ard: \(doubleToString(value: averageReturnDiscounted))" +
       "\n   eachPosition: \(eachPosition)" +
-      "\n   ap: \(doubleToString(value: averagePosition))"
+      "\n      ap: \(doubleToString(value: averagePosition))" +
+      "\n      apd: \(doubleToString(value: averagePositionDiscounted))"
   }
 }
 
 extension DataModelsCalculator {
+
+  public static func getPositionY2D(dps: [DP4WModel]) -> ([DP4WModel], [DP4WModel]) {
+    var (incl, excl) = filterOut(dps: dps, weekCount: nil, monthCount: nil, y2d: true)
+    incl.sort { $0.dpY2D! > $1.dpY2D! }
+    return (incl, excl)
+  }
   
-  public static func getPosition(dps: [DP4WModel], weekCount: Int?=nil, monthCount: Int?=nil, isReturn: Bool) -> ([DP4WModelPosition], [DP4WModel]) {
+  public static func getPosition(dps: [DP4WModel], weekCount: Int?=nil, monthCount: Int?=nil, isReturn: Bool) -> ([DP4WModel], [DP4WModel]) {
     let count = weekCount != nil ? weekCount! : monthCount!
     precondition(count > 0 && count <= 6, "Count interval mismatch")
-    let (incl, excl) = filterOut(dps: dps, weekCount: weekCount, monthCount: monthCount)
+    var (incl, excl) = filterOut(dps: dps, weekCount: weekCount, monthCount: monthCount, y2d: false)
+    guard incl.count > 0 else { return ([DP4WModel](), excl) }
     
     var winners = [DP4WModelPosition]()
     winners = incl.map { (dp: DP4WModel)->DP4WModelPosition in
@@ -60,18 +72,27 @@ extension DataModelsCalculator {
       let averageReturn = totalReturn / Double(eachReturn.count)
       
       let rv = DP4WModelPosition(dp4Model: dp,
+                                 id: dp.id,
                                  eachReturn: eachReturn,
                                  totalReturn: totalReturn,
                                  averageReturn: averageReturn,
                                  averageReturnDiscounted: averageReturnDiscounted)
       return rv
     }
-    
-    // Done if calculating return over count
+
+    // If Return is what we care about
     if isReturn {
       winners.sort { $0.averageReturnDiscounted > $1.averageReturnDiscounted }
-      return (winners, excl)
+      incl.removeAll()
+      for w in winners {
+        var w=w
+        w.dp4Model.ranking = w.averageReturnDiscounted
+        incl.append(w.dp4Model)
+      }
+      return (incl, excl)
     }
+    
+    // Below is code to manage position
     
     // Allocate space for each position
     for i in 0..<winners.count {
@@ -104,39 +125,73 @@ extension DataModelsCalculator {
     winners = winners.map {
       var e = $0
       e.averagePosition = Double($0.eachPosition.reduce(0, +)) / Double($0.eachPosition.count)
+
+      var discount = 1.0
+      let discountedReturn = $0.eachPosition.reduce(0.0) {
+        let cacc = $0
+        let cval = Double($1)
+        let thispart = cval * discount
+        let rv = cacc + thispart
+        discount /= 0.9
+        return rv
+      }
+      e.averagePositionDiscounted = discountedReturn / Double($0.eachPosition.count)
+
       return e
     }
+    
     // Sort ascending order (lower positions are winners)
-    winners.sort { $0.averagePosition < $1.averagePosition }
+    winners.sort { $0.averagePositionDiscounted < $1.averagePositionDiscounted }
+
+    // Assign back to DP4WModel
+    incl.removeAll()
+    for w in winners {
+      var w = w
+      w.dp4Model.ranking = w.averagePositionDiscounted
+      if weekCount != nil {
+        w.dp4Model.dpWsPos = w.eachPosition
+      } else {
+        w.dp4Model.dpMsPos = w.eachPosition
+      }
+      incl.append(w.dp4Model)
+    }
     
     // Return
-    return (winners, excl)
+    return (incl, excl)
   }
     
   // ******************************************************
   
-  private static func filterOut(dps: [DP4WModel], weekCount: Int?=nil, monthCount: Int?=nil) -> ([DP4WModel], [DP4WModel]) {
-    precondition(weekCount != nil || monthCount != nil, "One of week or month must be non-nil")
+  private static func filterOut(dps: [DP4WModel],
+                                weekCount: Int?=nil,
+                                monthCount: Int?=nil,
+                                y2d: Bool=false) -> ([DP4WModel], [DP4WModel]) {
+    precondition(weekCount != nil || monthCount != nil || y2d, "One of week or month must be non-nil")
     var rvIncl = [DP4WModel]()
     var rvExcl = [DP4WModel]()
     for d in dps {
-      
-//      if d.displayName.contains("landsbanken Global Aktie B") {
-//        print("hello")
-//      }
-      
       var include = true
-      for i in 0..<(weekCount != nil ? weekCount! : monthCount!) {
-        if weekCount != nil && (d.dpWs.count < weekCount! || d.dpWs[i] == nil) {
+
+      // Year to Date
+      if y2d == true {
+        if d.dpY2D == nil {
           include = false
-          break
         }
-        
-        if monthCount != nil && (d.dpMs.count < monthCount! || d.dpMs[i] == nil) {
-          include = false
-          break
-        }
-      }  // Done iterating through all weeks/months
+      }
+      // Week or Month
+      else {
+        for i in 0..<(weekCount != nil ? weekCount! : monthCount!) {
+          if weekCount != nil && (d.dpWs.count < weekCount! || d.dpWs[i] == nil) {
+            include = false
+            break
+          }
+          
+          if monthCount != nil && (d.dpMs.count < monthCount! || d.dpMs[i] == nil) {
+            include = false
+            break
+          }
+        }  // Done iterating through all weeks/months
+      }
       if include {
         rvIncl.append(d)
       } else {
@@ -163,7 +218,7 @@ extension DataModelsCalculator {
   //      dps: [dp01, dp02, dp03], weekCount: 4, monthCount: nil, isReturn: false)
       
       let (modelPos, model) = DataModelsCalculator.getPosition(
-        dps: AppDataObservable._allFundsDP4, weekCount: 1, monthCount: nil, isReturn: false)
+        dps: AppDataObservable._allFundsDP4, weekCount: 4, monthCount: nil, isReturn: false)
       
       print("Printing ModelPosition Results: \(modelPos.count)")
       for (idx,v) in modelPos.enumerated() {
@@ -174,5 +229,10 @@ extension DataModelsCalculator {
       print("\nPrinting Exclusions: \(model.count)")
   //    for v in model { print(v.description) }
       print("Done Testing Position\n***************************")
+      for (idx,v) in model.enumerated() {
+        print(idx)
+        print(v.description)
+        if idx > 3 { break }
+      }
     }
 }

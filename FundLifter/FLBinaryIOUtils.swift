@@ -31,7 +31,6 @@ public struct FLBinaryIOUtils {
     return (offset+int16, str)
   }
 
-
   public static var nullCounts = 0
   public static var nonNullCounts = 0
   public static func readFloatAsDoubleJava(data: Data, sindex: Int) -> (Int, Double?) {

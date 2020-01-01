@@ -17,6 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   let backgroundTask = "com.pf.fundlifter.backgroundTask"  // minutes ok
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     FirebaseApp.configure()
+    Analytics.setAnalyticsCollectionEnabled(false)
     print("FirebaseApp.configure has been called")
     
     logFileAppend(s: "Ent application(dFWLO)")

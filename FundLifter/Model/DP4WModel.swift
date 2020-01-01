@@ -27,11 +27,16 @@ public struct DP4WModel: Identifiable {
   
   public var id = ""
   public var displayName = ""
+  public var ranking: Double?
   
   public var dpWs = [Double?]()
   public var dpWsValidityPercent = [Double?]()
+  public var dpWsPos = [Int]()
+  
   public var dpMs = [Double?]()
   public var dpMsValidityPercent = [Double?]()
+  public var dpMsPos = [Int]()
+  
   public var dpY2D: Double? = nil
   public var dpY2DValidityPercent: Double = 0.0
 }

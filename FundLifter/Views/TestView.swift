@@ -8,43 +8,87 @@
 
 import SwiftUI
 
-
-// Name: YTD[#]
-// 1M[#], ..., 4m[#]
-// Score is 1.0, 0.8, 0.8^2, ...
-// Quantity == 0, the YTD, other entries are nil
-// If nil, then use average between last 2 months with YELLOW
-// At end print how many were disqualified
-// Also print stats on how many 1M are missing, i.e # disqualified from list
 struct TestView: View {
-  @State var quantity: Int = 6
-  @State var isShowing = false // toggle state
+  
+  @EnvironmentObject var settings: AppDataObservable
+  @State var quantity: Int = 4
+  @State var isReturns = false // toggle state
+  @State var durationMessage = "Error"
+  @State var funds = [DP4WModel]()
   public var portfolioName: String
   
   var body: some View {
     VStack {
-      Toggle("Use returns", isOn: $isShowing)
-      Stepper("Top Funds for Last: \(getTimeDescription())", value: $quantity, in: 1...13)
+//      Toggle("Use returns", isOn: $isReturns)
+
+      Toggle(isOn: $isReturns) {
+        Text("Use returns\(self.initializeFundList())")
+      }
+      
+      Stepper(onIncrement: {
+        if self.quantity <= 9 {
+          self.quantity += 1
+          self.initializeFundList()
+//          DispatchQueue.main.async { self.durationMessage = "\(self.quantity)" }
+        }
+      }, onDecrement: {
+        if self.quantity > 1 {
+          self.quantity -= 1
+          self.initializeFundList()
+        }
+      }, label: { Text("Top Funds for Last: \(durationMessage)") })
+      
+      Spacer()
+      List {
+        ForEach(funds)   { fund in
+          DP4WRowView2(displayName: fund.displayName, model: fund)
+        }
+      }
+      Spacer()
     }
     .onAppear {
       print("TestView.onAppear")
+      self.initializeFundList()
     }
   }
   
-  func getTimeDescription() -> String {
-    if quantity <= 6 {
-      return "\(quantity) Weeks"
+  func initializeFundList() -> String {
+    var rv = "Error"
+    var incl = [DP4WModel]()
+    if quantity <= 4 {
+      // print("Trying to find pn: \(portfolioName)")
+      let dps = settings.portfolio2DP4Funds[portfolioName]!
+      (incl, _) = DataModelsCalculator.getPosition(dps: dps,
+                                                   weekCount: quantity, monthCount: nil,
+                                                   isReturn: isReturns)
+      rv = "\(quantity) Weeks"
     }
-    if quantity >= 7 && quantity <= 12 {
-      return "\(quantity-6) Months"
+    if quantity >= 5 && quantity <= 8 {
+      (incl, _) = DataModelsCalculator.getPosition(dps: settings.portfolio2DP4Funds[portfolioName]!,
+                                                   weekCount: nil, monthCount: quantity-4,
+                                                   isReturn: isReturns)
+      rv = "\(quantity-4) Months"
     }
-    if quantity == 13 {
-      return "Year to Date"
+    if quantity == 9 {
+      (incl, _) = DataModelsCalculator.getPositionY2D(dps: settings.portfolio2DP4Funds[portfolioName]!)
+      rv = "Year to Date"
     }
-    fatalError("Should not arrive here")
+    if incl.count > 50 {
+      incl = Array(incl[0..<50])
+    }
+    
+    DispatchQueue.main.async {
+      self.funds.removeAll()
+      for (idx,f) in incl.enumerated() {
+        var f = f
+        f.displayName = "\(idx): \(f.displayName)"
+        self.funds.append(f)
+      }
+      self.durationMessage = rv
+    }
+    return ""
   }
 }
-
 
 struct TestView_Previews: PreviewProvider {
     static var previews: some View {

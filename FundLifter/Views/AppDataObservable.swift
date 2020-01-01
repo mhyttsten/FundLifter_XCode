@@ -9,6 +9,9 @@ public class AppDataObservable: ObservableObject {
 
   @Published var portfolios = [DP4WModel]()
   @Published var dp4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
+  @Published var portfolio2DP4Funds = [String: [DP4WModel]]()
+
+  @Published var fundPosList = [DP4WModelPosition]()
  
   public static var _allFundsDP4 = [DP4WModel]()
   public static var _allFunds = [D_FundInfo]()
@@ -27,6 +30,8 @@ public class AppDataObservable: ObservableObject {
       }
             
       // Read DB file data
+      print("Reading DB file at: \(FLConstants.urlDB())")
+      print("File originating from GCS: \(FLConstants.DB_FILENAME_GCS)")
       let (exists, data1, errorStr) = FLBinaryIOUtils.readFile(url: FLConstants.urlDB())
       if data1 == nil {
         var s = ""
@@ -289,9 +294,10 @@ public class AppDataObservable: ObservableObject {
       let portfoliosReadStr = PortfolioIO.read()
 
       for fi in AppDataObservable._allFunds {
-        AppDataObservable._allFundsDP4.append(DataModelsCalculator.getDP4WModelForFund(fund: fi))
+        let fdm = DataModelsCalculator.getDP4WModelForFund(fund: fi)
+        AppDataObservable._allFundsDP4.append(fdm)
       }
-      // DataModelsCalculator.testPosition()
+//      DataModelsCalculator.testPosition()
 
       DispatchQueue.main.async { [weak self] in
         // Create DP4W for all funds
@@ -307,7 +313,18 @@ public class AppDataObservable: ObservableObject {
           let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
           self?.portfolios.append(dp4ModelP)
           self?.dp4ModelHM[p] = dp4ModelP
-//          print("\(p): \(self?.dp4ModelHM[p]!.dpWs.count)")
+        }
+        
+        // Portfolio 2 [DP4WModel]
+        for fi in AppDataObservable._allFunds {
+          if self?.portfolio2DP4Funds.keys.contains(fi._type) == false {
+            self?.portfolio2DP4Funds[fi._type] = [DP4WModel]()
+            print("AppDataObservable, adding portfolio id: \(fi._type)")
+          }
+          guard let a = self?.dp4ModelHM[fi.typeAndName] else {
+            fatalError("Fund expected to exist: \(fi.typeAndName)")
+          }
+          self?.portfolio2DP4Funds[fi._type]!.append(a)
         }
       }
     }

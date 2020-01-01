@@ -1,16 +1,21 @@
-FL: 
+FL: Can you use RowView2 for portfolio also (and update portfolio displays update?)
+    If so, can you retire the HM key thing?
+FL: You also want to have pos window for Portfolio - at least "All Categories"
+
+FL: Take away annoying date thing after "Main" and each Portfolio. Put in on top of main somewhere
 FL: Store (and fetch) portfolio file from GCS
+FL: Fix date update after you've done a DB update
 Increase emacs font size
 Move code from open_spiel_yourstuff
 AllAboutSwift: GitHub & XCode, make Firebase and open_spiel play together
 Install latest TensorFlow Swift release
 FL: Secure your GCP cloud
+FL: The pos stepper can go below/above thresholds but as noops, how can you avoid that
 
 Clean up Firebase storage bucket, and delete Firebase Database content
 Add authentication and restrict access to Firebase Storage bucket
 
 Update MainView FundDB time after modal dialog box has been dismissed
-  
 
 Questions:
 - In UpdateDBModalView: Why aren't we forced to do .message="..." from main thread?
@@ -19,3 +24,11 @@ Questions:
   I need to do the HTTP request and UI element update in init() of the Observable
   However I am able to update in AppDataObservable.initialize when called from onAppear
   Difference is that I do all work on a global GCD queue (whereas the DBUpdate executes from a Firebase Storage thread)
+
+Jonas Val
+=========
+Spiltan Räntefond Sverige  30%  972497  mindre
+Simplicity Global Corp Bond  25%  934711  mindre
+Carnegie Corporate Bond  20%  537639  ny
+Simplicity Företagsobligationer  15%  832717  ny
+Spiltan Högräntefond  10%  560599  ny

@@ -7,8 +7,8 @@ target 'FundLifter' do
   use_frameworks!
 
   # Pods for FundLifter
-  pod 'Firebase/Analytics'
-  pod 'Firebase/Firestore'
+#  pod 'Firebase/Analytics'
+#  pod 'Firebase/Firestore'
   pod 'Firebase/Storage'
   pod 'Zip'
 

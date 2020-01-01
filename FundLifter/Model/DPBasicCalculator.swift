@@ -22,6 +22,7 @@ public class DataModelsCalculator {
         
         if rv.dpY2D == nil && wDPDs[i]!._rYTDFund != nil {
           rv.dpY2D = wDPDs[i]!._rYTDFund
+          rv.dpY2DValidityPercent = 1.0
         }
         
       } else {
@@ -33,8 +34,8 @@ public class DataModelsCalculator {
     let monthsYYMMDD = dateLastMonthsAsYYMMDD()
     let mDPDs = getDPDayValuesForDates(fund: fund, datesYYMMDD: monthsYYMMDD)
     for i in 0..<6 {
-      if let r1w = mDPDs[i]?._r1w {
-        rv.dpMs.append(r1w)
+      if let r1m = mDPDs[i]?._r1m {
+        rv.dpMs.append(r1m)
         rv.dpMsValidityPercent.append(1.0)
       } else {
         rv.dpMs.append(nil)
@@ -73,7 +74,10 @@ public class DataModelsCalculator {
       let mValF = mDPDs.map {  $0?._r1w != nil ? $0!._r1m : nil }
       mVal.append(mValF)
       
-      let yv = wDPDs[0]?._rYTDFund
+      var yv = wDPDs[0]?._rYTDFund
+      if yv == nil {
+        yv = mDPDs[0]?._rYTDFund
+      }
       yVal.append([yv])
     }
 
