@@ -57,20 +57,20 @@ struct TestView: View {
     var incl = [DP4WModel]()
     if quantity <= 4 {
       // print("Trying to find pn: \(portfolioName)")
-      let dps = settings.portfolio2DP4Funds[portfolioName]!
+      let dps = settings.type2DP4Funds[portfolioName]!
       (incl, _) = DataModelsCalculator.getPosition(dps: dps,
                                                    weekCount: quantity, monthCount: nil,
                                                    isReturn: isReturns)
       rv = "\(quantity) Weeks"
     }
     if quantity >= 5 && quantity <= 8 {
-      (incl, _) = DataModelsCalculator.getPosition(dps: settings.portfolio2DP4Funds[portfolioName]!,
+      (incl, _) = DataModelsCalculator.getPosition(dps: settings.type2DP4Funds[portfolioName]!,
                                                    weekCount: nil, monthCount: quantity-4,
                                                    isReturn: isReturns)
       rv = "\(quantity-4) Months"
     }
     if quantity == 9 {
-      (incl, _) = DataModelsCalculator.getPositionY2D(dps: settings.portfolio2DP4Funds[portfolioName]!)
+      (incl, _) = DataModelsCalculator.getPositionY2D(dps: settings.type2DP4Funds[portfolioName]!)
       rv = "Year to Date"
     }
     if incl.count > 50 {

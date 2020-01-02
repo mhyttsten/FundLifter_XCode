@@ -29,6 +29,12 @@ struct PortfolioView: View {
   var body: some View {
     NavigationView {
       VStack {
+        HStack {
+          NavigationLink(destination: TestView(portfolioName: portfolioName)) {
+            Text("Top Funds").bold()
+          }
+          Spacer()
+        }
         List {
           ForEach(funds)	 { fundDP4WModel in
             DP4WRowView(displayName: fundDP4WModel.displayName, dp4ModelKey: fundDP4WModel.id)

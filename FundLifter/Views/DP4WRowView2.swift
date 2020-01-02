@@ -19,6 +19,11 @@ struct DP4WRowView2: View {
   }
   
   func getString(isW: Bool=false, isM: Bool=false, isY: Bool=false, index: Int?=nil) -> String {
+    
+//    if model.displayName.starts(with: "28: Core Ny Teknik A") {
+//      print("Hello")
+//    }
+    
     var v: Double? = nil
     var vpos: Int? = nil
 
@@ -37,7 +42,8 @@ struct DP4WRowView2: View {
     } else {
       fatalError("Unexpected category")
     }
-    var s = doubleOptToString(value: v!)
+    // print("Fund. Index: \(index), \(model.displayName), \(model.dpWs)")
+    var s = doubleOptToString(value: v)
     if let vpos=vpos {
       s += ":\(vpos)"
     }

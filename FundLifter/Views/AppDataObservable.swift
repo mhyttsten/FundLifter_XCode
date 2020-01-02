@@ -9,7 +9,7 @@ public class AppDataObservable: ObservableObject {
 
   @Published var portfolios = [DP4WModel]()
   @Published var dp4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
-  @Published var portfolio2DP4Funds = [String: [DP4WModel]]()
+  @Published var type2DP4Funds = [String: [DP4WModel]]()
 
   @Published var fundPosList = [DP4WModelPosition]()
  
@@ -317,14 +317,14 @@ public class AppDataObservable: ObservableObject {
         
         // Portfolio 2 [DP4WModel]
         for fi in AppDataObservable._allFunds {
-          if self?.portfolio2DP4Funds.keys.contains(fi._type) == false {
-            self?.portfolio2DP4Funds[fi._type] = [DP4WModel]()
+          if self?.type2DP4Funds.keys.contains(fi._type) == false {
+            self?.type2DP4Funds[fi._type] = [DP4WModel]()
             print("AppDataObservable, adding portfolio id: \(fi._type)")
           }
           guard let a = self?.dp4ModelHM[fi.typeAndName] else {
             fatalError("Fund expected to exist: \(fi.typeAndName)")
           }
-          self?.portfolio2DP4Funds[fi._type]!.append(a)
+          self?.type2DP4Funds[fi._type]!.append(a)
         }
       }
     }

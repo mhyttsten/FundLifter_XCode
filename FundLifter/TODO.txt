@@ -1,21 +1,19 @@
-FL: Can you use RowView2 for portfolio also (and update portfolio displays update?)
-    If so, can you retire the HM key thing?
-FL: You also want to have pos window for Portfolio - at least "All Categories"
-
+FL: How to avoid the double navigation appearing for "Top Funds"
 FL: Take away annoying date thing after "Main" and each Portfolio. Put in on top of main somewhere
+FL: Put stats on top funds (total funds / considered / discarded)
+FL: Put title on "Top Funds"
+
+FL: How do you populate 'All Categories' in Main
+FL: "Top Funds" within All Categories naturally crashes
+
 FL: Store (and fetch) portfolio file from GCS
 FL: Fix date update after you've done a DB update
 Increase emacs font size
 Move code from open_spiel_yourstuff
 AllAboutSwift: GitHub & XCode, make Firebase and open_spiel play together
-Install latest TensorFlow Swift release
-FL: Secure your GCP cloud
+FL: Secure your GCP cloud (Clean up Firebase storage bucket, and delete Firebase Database content)
+    Add authentication and restrict access to Firebase Storage bucket
 FL: The pos stepper can go below/above thresholds but as noops, how can you avoid that
-
-Clean up Firebase storage bucket, and delete Firebase Database content
-Add authentication and restrict access to Firebase Storage bucket
-
-Update MainView FundDB time after modal dialog box has been dismissed
 
 Questions:
 - In UpdateDBModalView: Why aren't we forced to do .message="..." from main thread?
