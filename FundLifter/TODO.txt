@@ -1,11 +1,12 @@
-FL: How to avoid the double navigation appearing for "Top Funds"
 FL: Take away annoying date thing after "Main" and each Portfolio. Put in on top of main somewhere
 FL: Put stats on top funds (total funds / considered / discarded)
 FL: Put title on "Top Funds"
 
 FL: How do you populate 'All Categories' in Main
 FL: "Top Funds" within All Categories naturally crashes
+FL: Firebase SSL problems
 
+FL: Fix log, and allow for a log display window
 FL: Store (and fetch) portfolio file from GCS
 FL: Fix date update after you've done a DB update
 Increase emacs font size

@@ -19,7 +19,13 @@ public class AppDataObservable: ObservableObject {
   public static var _typeAndName2Fund = [String: D_FundInfo]()
   public static var _portfolios = [String: [D_FundInfo]]()
 
-  public func initialize() {
+  private var isInitialized = false
+  public func initialize(forceReinitialization: Bool = false) {
+    if isInitialized && !forceReinitialization {
+      return
+    }
+    isInitialized = true
+    
     DispatchQueue.global(qos: .userInteractive).async { [weak self] in
       guard let self=self else {
         return

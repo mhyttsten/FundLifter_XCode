@@ -11,6 +11,7 @@ import SwiftUI
 struct PortfolioView: View {
   @EnvironmentObject var settings: AppDataObservable
   @State private var show_modal: Bool = false
+  
   public var portfolioName: String
   public var funds: [DP4WModel] {
     AppDataObservable._portfolios[portfolioName]!.map {
@@ -22,40 +23,32 @@ struct PortfolioView: View {
     }
   }
   
-  init(portfolioName: String) {
-    self.portfolioName = portfolioName
-  }
-  
   var body: some View {
-    NavigationView {
-      VStack {
-        HStack {
-          NavigationLink(destination: TestView(portfolioName: portfolioName)) {
-            Text("Top Funds").bold()
-          }
-          Spacer()
+    VStack {
+      HStack {
+        NavigationLink(destination: TopFundsView(portfolioName: portfolioName)) {
+          Text("Top Funds").bold()
         }
-        List {
-          ForEach(funds)	 { fundDP4WModel in
-            DP4WRowView(displayName: fundDP4WModel.displayName, dp4ModelKey: fundDP4WModel.id)
-          }
-        }
+        .navigationBarTitle("\(portfolioName)")
         Spacer()
-
-        Button(action: {
-          self.show_modal = true
-        }) {
-          Text("Update Portfolio")
-        }.sheet(isPresented: self.$show_modal) {
-          PortfolioSelectionView(portfolioName: self.portfolioName).environmentObject(self.settings)
+      }
+      List {
+        ForEach(funds)	 { fundDP4WModel in
+          DP4WRowView(displayName: fundDP4WModel.displayName, dp4ModelKey: fundDP4WModel.id)
         }
       }
-      .navigationBarTitle(Text("\(portfolioName): \(dateLastFridaysAsYYMMDD()[0])"))
-//      Text("End of list")
+      Spacer()
+      
+      Button(action: {
+        self.show_modal = true
+      }) {
+        Text("Update Portfolio")
+      }.sheet(isPresented: self.$show_modal) {
+        PortfolioSelectionView(portfolioName: self.portfolioName).environmentObject(self.settings)
+      }
     }.onAppear {
     }
   }
-  
 }
 
 struct PortfolioView_Previews: PreviewProvider {
