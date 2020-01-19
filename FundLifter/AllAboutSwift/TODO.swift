@@ -107,6 +107,15 @@ Backburner - Things to try out
     return a[0..<2]
  }
  
+ 
+ - Even though I have a description property, the following will not use it
+   for d in _dpDays {
+     s += "\(d)\n"
+   I need to explicitly specify .description
+
+ - Works: if fundInfo.typeAndName.starts(with: "PPM.AP7") {
+   But == "PPM.AP7" does not work
+ 
  - Any more beautiful way to write this
    if rv.dpY2D == nil && wDPDs[i]!._rYTDFund != nil {
      rv.dpY2D = wDPDs[i]!._rYTDFund

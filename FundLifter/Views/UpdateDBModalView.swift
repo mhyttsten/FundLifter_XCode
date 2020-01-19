@@ -44,14 +44,6 @@ public class DBUpdateObservable: ObservableObject {
     let storage = Storage.storage()
     let storageRef = storage.reference(withPath: FLConstants.DB_FILENAME_GCS)
     
-    // Read Firebase Storage file from GCS into memory
-    //    storageRef.getData(maxSize: 20 * 1024 * 1024) { data, error in
-    //      if let error = error {
-    //        print("Error: \(error)")
-    //      } else {
-    //        print("Resulting data.count: \(data!.count)")
-    //      }
-    //    }
 
     // Store GCS file directly onto file system
     let _ = storageRef.write(toFile: FLConstants.urlDBZip()) { url, error in
@@ -116,7 +108,7 @@ struct UpdateDBModalView: View {
 //      print("...will now call fetch")
 ////      self.data.fetchNewFundDBFile(settings: self.settings)
 //      print("...returned from fetch")
-      self.settings.fundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
+      self.settings.pubFundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
 //      print("...done with everything")
     }
   }

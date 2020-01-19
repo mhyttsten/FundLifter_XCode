@@ -10,13 +10,14 @@ import Foundation
 
 public struct DP4WModel: Identifiable {
   
-  init(fqName: String, displayName: String) {
+  init(fqName: String, displayName: String, subTitle: String) {
     self.displayName = displayName
+    self.subTitle = subTitle
     self.id = fqName
   }
   
   public var description: String {
-    return "\(id): \(displayName)" +
+    return "\(id): \(displayName), \(subTitle)" +
       "\n   dpWs: \(doubleOptsToString(value: dpWs))" +
       "\n   dpWsVP: \(doubleOptsToString(value: dpWsValidityPercent))" +
       "\n   dpMs: \(doubleOptsToString(value: dpMs))" +
@@ -27,6 +28,7 @@ public struct DP4WModel: Identifiable {
   
   public var id = ""
   public var displayName = ""
+  public var subTitle = "subtitle"
   public var ranking: Double?
   
   public var dpWs = [Double?]()

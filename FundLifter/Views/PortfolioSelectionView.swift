@@ -48,15 +48,26 @@ struct PortfolioSelectionView: View {
         AppDataObservable._portfolios[self.portfolioName]!.sort { (a1: D_FundInfo, a2: D_FundInfo)->Bool in
           return a1.typeAndName < a2.typeAndName
         }
-        let s = PortfolioIO.write()
-        let s1 = "Writing portfolio file, result is: \(s)"
-        print(s1)
-        logFileAppend(s: s1)
+        
+        let data = portfolioEncode()
+        CoreIO.gcsWrite(targetFile: FLConstants.PORTFOLIO_FILENAME_GCS, data: data) { metadata, error in
+          if let error=error {
+            print("*** Error when saving: \(error)")
+          } else {
+            print("Success saving portfolio, metadata: \(metadata!)")
+          }
+        }
         
         DispatchQueue.main.async {
           let pname = self.portfolioName
           let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: pname, funds: AppDataObservable._portfolios[pname]!)
-          self.settings.dp4ModelHM[pname] = dp4ModelP
+          self.settings.pubDP4ModelHM[pname] = dp4ModelP
+          
+          self.settings.pubPortfolio2DP4Funds[pname]!.removeAll()
+          for fi in AppDataObservable._portfolios[pname]! {
+            let dp4w = self.settings.pubDP4ModelHM[fi.typeAndName]!
+            self.settings.pubPortfolio2DP4Funds[pname]!.append(dp4w)
+          }
         }
         self.presentationMode.wrappedValue.dismiss()
       }) {

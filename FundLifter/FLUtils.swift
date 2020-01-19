@@ -42,6 +42,45 @@ public func doubleOptToColor(value: Double?, percent: Double?) -> Color {
 
 //--------------------------------------------------
 
+public func getHexDump(data: Data, sindex: Int, eindex: Int) -> String {
+  var rv = ""
+  var cindex = 0
+  while eindex > cindex {
+    let lindex = (cindex + 16) <= eindex ? cindex+16 : eindex
+    let elem = data[cindex..<lindex]
+    let remainder = 16-(lindex-cindex)
+    
+    let s = elem.map { String(format: "%02hhx ", $0) }.joined()
+    rv = "\(rv)\(s)"
+    if remainder > 0 {
+      for _ in 0..<remainder {
+        rv = "\(rv)   "
+      }
+    }
+    
+    if (lindex>cindex) {
+      for i in cindex..<lindex {
+        var char = "."
+        if elem[i]>=0x20 && elem[i]<=127 {
+          char = String(UnicodeScalar(elem[i]))
+        }
+        rv = "\(rv)\(char)"
+      }
+    }
+    if remainder > 0 {
+      for _ in 0..<remainder {
+        rv = "\(rv) "
+      }
+    }
+    rv = "\(rv)\n"
+    
+    cindex = lindex
+  }
+  return rv
+}
+
+//--------------------------------------------------
+
 public func dateAsYYMMDD(date: Date) -> String {
   let df = DateFormatter()
   df.dateFormat = "yyMMdd"
@@ -110,7 +149,6 @@ fileprivate func dateLastFridays(count: Int, startAt: Date=Date(), inclusive: Bo
   }
   return r
 }
-
 
 fileprivate func dateIsFriday(dateYYMMDD: String) -> Bool {
   let date = dateFromYYMMDD(dateYYMMDD: dateYYMMDD)

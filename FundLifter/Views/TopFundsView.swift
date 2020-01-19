@@ -13,88 +13,156 @@ struct TopFundsView: View {
   @EnvironmentObject var settings: AppDataObservable
   @State var quantity: Int = 4
   @State var isReturns = false // toggle state
-  @State var durationMessage = "Error"
-  @State var funds = [DP4WModel]()
+  @State var coverageMessage = "Not calculated"
+  @State private var show_modal: Bool = false
+  
+  public var funds: [DP4WModel] {
+    return getFundList()
+  }
+
+  public enum ViewType {
+    case TYPE
+    case PORTFOLIO
+  }
   public var portfolioName: String
+  public var type: ViewType = .TYPE
+  public var title: String = ""
+  
+  public func hasTopFunds() -> Bool {
+    if type == .PORTFOLIO && D_FundInfo.PORTFOLIO_TYPES.contains(portfolioName) {
+      return true
+    } else {
+      return false
+    }
+  }
+  
+  public func isTopFunds() -> Bool {
+    if type == .TYPE && D_FundInfo.PORTFOLIO_TYPES.contains(portfolioName) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  public init(portfolioName: String, type: ViewType) {
+    self.portfolioName = portfolioName
+    self.type = type
+    if isTopFunds() {
+      self.title = "Top Funds: \(portfolioName)"
+    } else {
+      self.title = "\(portfolioName)"
+    }
+  }
   
   var body: some View {
     VStack {
-      Text("Top Funds: \(portfolioName)")
+      if hasTopFunds() {
+        HStack {
+          NavigationLink(destination: TopFundsView(portfolioName: portfolioName, type: .TYPE)) {
+            Text("Top Funds").bold()
+          }
+          .navigationBarTitle("\(portfolioName)")
+          Spacer()
+        }
+      }
+      Spacer()
+      
+      Text("\(self.title)")
         .font(.title)
         .bold()
-      
+      Text("Coverage: \(coverageMessage)")
+
       Toggle(isOn: $isReturns) {
-        Text("Use returns\(self.initializeFundList())")
+        Text("Use returns")
       }
       
       Stepper(onIncrement: {
         if self.quantity <= 9 {
           self.quantity += 1
-          self.initializeFundList()
-//          DispatchQueue.main.async { self.durationMessage = "\(self.quantity)" }
+//          self.initializeFundList()
         }
       }, onDecrement: {
         if self.quantity > 1 {
           self.quantity -= 1
-          self.initializeFundList()
+//          self.initializeFundList()
         }
-      }, label: { Text("Duration: \(durationMessage)") })
+      }, label: { Text("Duration: \(getListDuration())") })
       
-      Spacer()
       List {
         ForEach(funds)   { fund in
           DP4WRowView2(displayName: fund.displayName, model: fund)
         }
       }
       Spacer()
+      
+      if !isTopFunds() {
+        Button(action: {
+          self.show_modal = true
+        }) {
+          Text("Update Portfolio")
+        }.sheet(isPresented: self.$show_modal) {
+          PortfolioSelectionView(portfolioName: self.portfolioName).environmentObject(self.settings)
+        }
+      }
     }
     .onAppear {
       print("TestView.onAppear")
-      self.initializeFundList()
+//      self.initializeFundList()
     }
   }
   
-  func initializeFundList() -> String {
-    var rv = "Error"
-    var incl = [DP4WModel]()
+  func getListDuration() -> String {
     if quantity <= 4 {
-      // print("Trying to find pn: \(portfolioName)")
-      let dps = settings.type2DP4Funds[portfolioName]!
-      (incl, _) = DataModelsCalculator.getPosition(dps: dps,
-                                                   weekCount: quantity, monthCount: nil,
-                                                   isReturn: isReturns)
-      rv = "\(quantity) Weeks"
+      return "\(quantity) Weeks"
     }
     if quantity >= 5 && quantity <= 8 {
-      (incl, _) = DataModelsCalculator.getPosition(dps: settings.type2DP4Funds[portfolioName]!,
-                                                   weekCount: nil, monthCount: quantity-4,
-                                                   isReturn: isReturns)
-      rv = "\(quantity-4) Months"
+      return "\(quantity-4) Months"
     }
     if quantity == 9 {
-      (incl, _) = DataModelsCalculator.getPositionY2D(dps: settings.type2DP4Funds[portfolioName]!)
-      rv = "Year to Date"
+      return "Year to Date"
     }
+    return "ERROR"
+  }
+  
+  func getFundList() -> [DP4WModel] {
+    var incl = [DP4WModel]()
+    var excl = [DP4WModel]()
+    var dps = type == .TYPE ? settings.pubType2DP4Funds[portfolioName]! : settings.pubPortfolio2DP4Funds[portfolioName]!
+
+    if quantity <= 4 {
+      (incl, excl) = DataModelsCalculator.getPosition(dps: dps,
+                                                      weekCount: quantity, monthCount: nil,
+                                                      isReturn: isReturns)
+    }
+    if quantity >= 5 && quantity <= 8 {
+      (incl, excl) = DataModelsCalculator.getPosition(dps: dps,
+                                                   weekCount: nil, monthCount: quantity-4,
+                                                   isReturn: isReturns)
+    }
+    if quantity == 9 {
+      (incl, excl) = DataModelsCalculator.getPositionY2D(dps: dps)
+    }
+    let countIncl = incl.count
+    let countExcl = excl.count
+    let countTotal = countIncl + countExcl
+    let coverageMessage = "\(doubleOptToString(value: Double(Double(countIncl)/Double(countTotal)*100)))%"
+      + " (\(countExcl)/\(countTotal) excluded)"
+    
     if incl.count > 50 {
       incl = Array(incl[0..<50])
     }
     
     DispatchQueue.main.async {
-      self.funds.removeAll()
+      self.coverageMessage = coverageMessage
+//      self.fundList.removeAll()
       for (idx,f) in incl.enumerated() {
         var f = f
         f.displayName = "\(idx): \(f.displayName)"
-        self.funds.append(f)
+//        self.fundList.append(f)
       }
-      self.durationMessage = rv
     }
-    return ""
+    return incl
   }
 }
 
-struct TopFundsView_Previews: PreviewProvider {
-    static var previews: some View {
-      TopFundsView(portfolioName: D_FundInfo.TYPE_PPM)
-    }
-}
 

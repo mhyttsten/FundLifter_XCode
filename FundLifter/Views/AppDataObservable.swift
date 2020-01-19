@@ -4,15 +4,13 @@ import Firebase
 import Zip
 
 public class AppDataObservable: ObservableObject {
-  @Published var message = "Initializing"
-  @Published var fundDBCreationTime = "No Fund DB File"
+  @Published var pubMessage = "Initializing"
+  @Published var pubFundDBCreationTime = "No Fund DB File"
+  @Published var pubPortfolios = [DP4WModel]()
+  @Published var pubDP4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
+  @Published var pubType2DP4Funds = [String: [DP4WModel]]()
+  @Published var pubPortfolio2DP4Funds = [String: [DP4WModel]]()
 
-  @Published var portfolios = [DP4WModel]()
-  @Published var dp4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
-  @Published var type2DP4Funds = [String: [DP4WModel]]()
-
-  @Published var fundPosList = [DP4WModelPosition]()
- 
   public static var _allFundsDP4 = [DP4WModel]()
   public static var _allFunds = [D_FundInfo]()
   public static var _type2Funds = [String: [D_FundInfo]]()
@@ -32,7 +30,7 @@ public class AppDataObservable: ObservableObject {
       }
       
       DispatchQueue.main.async { [weak self] in
-        self?.fundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
+        self?.pubFundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
       }
             
       // Read DB file data
@@ -50,7 +48,7 @@ public class AppDataObservable: ObservableObject {
           s = errorStr!
         }
         DispatchQueue.main.async { [weak self] in
-          self?.message = s
+          self?.pubMessage = s
         }
         return
       }
@@ -59,7 +57,7 @@ public class AppDataObservable: ObservableObject {
       let data = data1!
       // print("Data read: \(data.count)")
       
-      let _ = FLBinaryIOUtils.getHexDump(data: data, sindex: 0, eindex: 1024)
+      let _ = getHexDump(data: data, sindex: 0, eindex: 1024)
       // print("Hex dump\n\(s)")
       
       var cindex = 0
@@ -279,12 +277,13 @@ public class AppDataObservable: ObservableObject {
 //          cdate = dateLastFridayAsYYMMDD(startAt: dateFromYYMMDD(dateYYMMDD: cdate), inclusive: false)
 //        }
 //        print("Did fund: \(fundInfo.typeAndName)")
-
+        
         if let _ = AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] {
           let s = "Duplicate fund found in database: \(fundInfo.typeAndName)"
           logFileAppend(s: s)
           fatalError(s)
         }
+        print("Adding typeAndName: \(fundInfo.typeAndName)")
         AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] = fundInfo
         AppDataObservable._allFunds.append(fundInfo)
         if !AppDataObservable._type2Funds.keys.contains(fundInfo._type) {
@@ -297,42 +296,189 @@ public class AppDataObservable: ObservableObject {
       print("Done reading all funds, total: \(AppDataObservable._allFunds.count)")
       print("   nonNullCounts: \(FLBinaryIOUtils.nonNullCounts), nullCounts: \(FLBinaryIOUtils.nullCounts)")
       
-      let portfoliosReadStr = PortfolioIO.read()
-
       for fi in AppDataObservable._allFunds {
         let fdm = DataModelsCalculator.getDP4WModelForFund(fund: fi)
         AppDataObservable._allFundsDP4.append(fdm)
       }
-//      DataModelsCalculator.testPosition()
+      
+      // Populates: AppDataObservable._portfolios[type]!.append(fund)
+      // let portfoliosReadStr = PortfolioIO.read()
 
-      DispatchQueue.main.async { [weak self] in
-        // Create DP4W for all funds
-        for fi in AppDataObservable._allFundsDP4 {
-          self?.dp4ModelHM[fi.id] = fi
+      // GCS way of doing things
+      AppDataObservable.initializeEmptyPortfolios()
+      CoreIO.gcsRead(fromFile: FLConstants.PORTFOLIO_FILENAME_GCS) {
+        
+        var message = "Initializing"
+        if let error=$1 {
+          message = "Error GCS fetching portfolio: \(error)"
         }
-        
-        // Initialize status message on # funds & portfolios
-        self?.message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(portfoliosReadStr)"
-        
-        // Display the portfolios
-        for p in AppDataObservable._portfolios.keys.sorted() {
-          let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
-          self?.portfolios.append(dp4ModelP)
-          self?.dp4ModelHM[p] = dp4ModelP
-        }
-        
-        // Portfolio 2 [DP4WModel]
-        for fi in AppDataObservable._allFunds {
-          if self?.type2DP4Funds.keys.contains(fi._type) == false {
-            self?.type2DP4Funds[fi._type] = [DP4WModel]()
-            print("AppDataObservable, adding portfolio id: \(fi._type)")
+        else if let data=$0 {
+          // Assign: AppDataObservable._portfolios[type]
+          let (error, portfolioCount) = portfolioDecode(data: data)
+          if let error=error {
+            message = "Error decoding portfolio: \(error)"
+          } else {
+            message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(portfolioCount)"
           }
-          guard let a = self?.dp4ModelHM[fi.typeAndName] else {
-            fatalError("Fund expected to exist: \(fi.typeAndName)")
-          }
-          self?.type2DP4Funds[fi._type]!.append(a)
         }
+        
+        // All _ datastructures initialize, initialize the @Published ones
+        DispatchQueue.main.async { [weak self] in
+          // Create DP4W for all funds
+          for fi in AppDataObservable._allFundsDP4 {
+            self?.pubDP4ModelHM[fi.id] = fi
+          }
+        
+          // Initialize status message on # funds & portfolios
+          self?.pubMessage = message
+        
+          // Display the portfolios
+          for p in AppDataObservable._portfolios.keys.sorted() {
+            let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
+            self?.pubPortfolios.append(dp4ModelP)
+            self?.pubDP4ModelHM[p] = dp4ModelP
+            
+            if self?.pubPortfolio2DP4Funds.keys.contains(p) == false {
+              self?.pubPortfolio2DP4Funds[p] = [DP4WModel]()
+            }
+            
+            for fi in AppDataObservable._portfolios[p]! {
+              let dp4w = self!.pubDP4ModelHM[fi.typeAndName]!
+              self?.pubPortfolio2DP4Funds[p]!.append(dp4w)
+            }
+          }
+        
+          // Type 2 [DP4WModel]
+          for fi in AppDataObservable._allFunds {
+            if self?.pubType2DP4Funds.keys.contains(fi._type) == false {
+              self?.pubType2DP4Funds[fi._type] = [DP4WModel]()
+              print("AppDataObservable, adding portfolio id: \(fi._type)")
+            }
+            guard let a = self?.pubDP4ModelHM[fi.typeAndName] else {
+              fatalError("Fund expected to exist: \(fi.typeAndName)")
+            }
+            self?.pubType2DP4Funds[fi._type]!.append(a)
+          }
+        }  // End: DispatchQueue.main.async
+      }  // End: GCS portfolio file fetched closure
+    }  // End: DispatchQueue.global
+  }  // End: initialize function
+  
+  public static func initializeEmptyPortfolios() {
+    // Initialize all portfolios
+    AppDataObservable._portfolios[FLConstants.PORTFOLIO_ARCS] = [D_FundInfo]()
+    for t in D_FundInfo.PORTFOLIO_TYPES {
+      AppDataObservable._portfolios[t] = [D_FundInfo]()
+    }
+  }
+}
+
+public func portfolioDecode(data: Data) -> (String?, Int) {
+  var cindex = 0
+  var portfolioCount = 0
+  while cindex < data.count {
+    var type = ""
+    (cindex, type) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
+    print("type: \(type)")
+    
+    var count = 0
+    (cindex, count) = FLBinaryIOUtils.readIntSwift(data: data, sindex: cindex)
+    var error = false
+    for _ in 0..<count {
+      var typeAndName = ""
+      (cindex, typeAndName) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
+      print("...typeAndName: \(typeAndName)")
+      if let fund = AppDataObservable._typeAndName2Fund[typeAndName] {
+        if !error {
+          AppDataObservable._portfolios[type]!.append(fund)
+        }
+      } else {
+        logFileAppend(s: "*** Portfolio error, fund not found: \(typeAndName)")
+        print("*** portfolioDecode, fund not found: \(typeAndName)")
+        AppDataObservable._portfolios[type] = [D_FundInfo]()
+        error = true
       }
     }
-  }  
+    portfolioCount += 1
+  }
+  return (nil, portfolioCount)
 }
+
+public func portfolioEncode() -> Data {
+  var data = Data()
+  
+  for t in AppDataObservable._portfolios.keys {
+    data.append(FLBinaryIOUtils.writeUTFSwift(string: t))
+    // print(getHexDump(data: data, sindex: 0, eindex: data.count))
+    
+    let funds = AppDataObservable._portfolios[t]!
+    data.append(FLBinaryIOUtils.writeIntSwift(integer: funds.count))
+    // print(getHexDump(data: data, sindex: 0, eindex: data.count))
+    
+    for f in funds {
+      data.append(FLBinaryIOUtils.writeUTFSwift(string: f.typeAndName))
+      // print(FLBinaryIOUtils.getHexDump(data: data, sindex: 0, eindex: data.count))
+    }
+  }
+  return data
+}
+
+//func urlDownload() {
+//  // Create destination URL
+//  let documentsUrl:URL =  FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+//  print("Documents Url: \(documentsUrl)")
+//  if FileManager.default.fileExists(atPath: documentsUrl.path) == false {
+//    print("...*** Documents URL does not exist")
+//    return
+//  }
+//  print("...documents url existed")
+//
+//  let destinationFileUrl = documentsUrl.appendingPathComponent("downloadedFile.jpg")
+//  print("Destination file Url: \(destinationFileUrl)")
+//  do {
+//    try FileManager.default.removeItem(at: documentsUrl)
+//  } catch {
+//    print("*** ERROR")
+//  }
+//  if true {
+//    return
+//  }
+//
+//  // Delete file if it already exists
+//  print("Checking if file exists")
+//  if FileManager.default.fileExists(atPath: documentsUrl.path) {
+//    print("...File existed, will now delete it")
+//    do { try FileManager.default.removeItem(at: documentsUrl) } catch {
+//      print("...*** Error deleting file: \(error)")
+//      return
+//    }
+//  }
+//  print("Ok, file does not exist")
+//
+//  //Create URL to the source file you want to download
+//  let fileURL = URL(string: "https://www.wikipedia.org/")
+//
+//  let sessionConfig = URLSessionConfiguration.default
+//  let session = URLSession(configuration: sessionConfig)
+//  let request = URLRequest(url: fileURL!)
+//
+//  let task = session.downloadTask(with: request) { (tempLocalUrl, response, error) in
+//    if let tempLocalUrl = tempLocalUrl, error == nil {
+//      if let statusCode = (response as? HTTPURLResponse)?.statusCode {
+//        print("Successfully downloaded. Status code: \(statusCode)")
+//      }
+//
+//      do {
+//        print("Temporary URL is: \(tempLocalUrl)")
+//        print("Will now move the file to: \(destinationFileUrl)")
+//        try FileManager.default.moveItem(at: tempLocalUrl, to: destinationFileUrl)
+//      } catch (let writeError) {
+//        print("...*** Error moving the file: \(writeError)")
+//      }
+//
+//    } else {
+//      print("Error took place while downloading a file. Error description: %@", error?.localizedDescription);
+//    }
+//  }
+//  task.resume()
+//}

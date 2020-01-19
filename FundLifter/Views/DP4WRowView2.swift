@@ -82,6 +82,10 @@ struct DP4WRowView2: View {
       }
       VStack {
         HStack {
+          Text("\(model.subTitle)")
+          Spacer()
+        }
+        HStack {
           Text("Ranking: \(doubleOptToString(value: model.ranking))")
           Spacer()
         }

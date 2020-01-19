@@ -11,7 +11,7 @@ import Foundation
 public class DataModelsCalculator {
   
   public static func getDP4WModelForFund(fund: D_FundInfo, startDate: Date=Date()) -> DP4WModel {
-    var rv = DP4WModel(fqName: fund.typeAndName, displayName: fund._nameMS)
+    var rv = DP4WModel(fqName: fund.typeAndName, displayName: fund._nameMS, subTitle: fund._indexName)
 
     let weeksYYMMDD = dateLastFridaysAsYYMMDD()
     let wDPDs = getDPDayValuesForDates(fund: fund, datesYYMMDD: weeksYYMMDD)
@@ -20,7 +20,7 @@ public class DataModelsCalculator {
         rv.dpWs.append(wDPDs[i]!._r1w)
         rv.dpWsValidityPercent.append(1.0)
         
-        if rv.dpY2D == nil && wDPDs[i]!._rYTDFund != nil {
+        if i==0 && wDPDs[i]!._rYTDFund != nil {
           rv.dpY2D = wDPDs[i]!._rYTDFund
           rv.dpY2DValidityPercent = 1.0
         }
@@ -47,12 +47,12 @@ public class DataModelsCalculator {
   }
   
   public static func getDP4WModelForPortfolio(name: String, funds: [D_FundInfo]) -> DP4WModel {
-    print("getDP4WModelForPortfolio: \(name)")
+//    print("getDP4WModelForPortfolio: \(name)")
 
     let datesWeeks =  dateLastFridaysAsYYMMDD()
-    print("   DatesWeeks: \(datesWeeks)")
+//    print("   DatesWeeks: \(datesWeeks)")
     let datesMonths = dateLastMonthsAsYYMMDD()
-    print("   DatesMonths: \(datesMonths)")
+//    print("   DatesMonths: \(datesMonths)")
 
     var wVal = [[Double?]]()
     var mVal = [[Double?]]()
@@ -64,13 +64,13 @@ public class DataModelsCalculator {
         continue
       }
       
-      print("   \(fi.typeAndName)")
-      print("      wDPDs[\(wDPDs.count)]: \(wDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
+//      print("   \(fi.typeAndName)")
+//      print("      wDPDs[\(wDPDs.count)]: \(wDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
       let wValF = wDPDs.map {  $0?._r1w != nil ? $0!._r1w : nil }
       wVal.append(wValF)
 
       let mDPDs = getDPDayValuesForDates(fund: fi, datesYYMMDD: datesMonths)
-      print("      mDPDs[\(mDPDs.count)]: \(mDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
+//      print("      mDPDs[\(mDPDs.count)]: \(mDPDs.map { $0 != nil ? "(\($0!.description))" : "nil" })")
       let mValF = mDPDs.map {  $0?._r1w != nil ? $0!._r1m : nil }
       mVal.append(mValF)
       
@@ -99,21 +99,21 @@ public class DataModelsCalculator {
       vYPercentValid = [0.0]
     }
 
-    var dp4w = DP4WModel(fqName: name, displayName: name)
+    var dp4w = DP4WModel(fqName: name, displayName: name, subTitle: "N/A")
     dp4w.dpWs = vWAverage
-    print("      fdpWs[\(dp4w.dpWs.count)]: \(dp4w.dpWs)")
+//    print("      fdpWs[\(dp4w.dpWs.count)]: \(dp4w.dpWs)")
     dp4w.dpWsValidityPercent = vWPercentValid
-    print("      fdpWsVP[\(dp4w.dpWsValidityPercent.count)]: \(dp4w.dpWsValidityPercent)")
+//    print("      fdpWsVP[\(dp4w.dpWsValidityPercent.count)]: \(dp4w.dpWsValidityPercent)")
     dp4w.dpMs = vMAverage
-    print("      fdpMs[\(dp4w.dpMs.count)]: \(dp4w.dpMs)")
+//    print("      fdpMs[\(dp4w.dpMs.count)]: \(dp4w.dpMs)")
     dp4w.dpMsValidityPercent = vMPercentValid
-    print("      fdpMsVP[\(dp4w.dpMsValidityPercent.count)]: \(dp4w.dpMsValidityPercent)")
+//    print("      fdpMsVP[\(dp4w.dpMsValidityPercent.count)]: \(dp4w.dpMsValidityPercent)")
     if vYAverage.count >= 1 {
       dp4w.dpY2D = vYAverage[0]
       dp4w.dpY2DValidityPercent =  vYPercentValid[0]
     }
-    print("      fdpY2D: \(dp4w.dpY2D)")
-    print("      fdpY2DVP: \(dp4w.dpY2DValidityPercent)")
+//    print("      fdpY2D: \(dp4w.dpY2D)")
+//    print("      fdpY2DVP: \(dp4w.dpY2DValidityPercent)")
 
     return dp4w
   }
