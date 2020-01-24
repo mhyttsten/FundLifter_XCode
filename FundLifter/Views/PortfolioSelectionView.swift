@@ -60,7 +60,11 @@ struct PortfolioSelectionView: View {
         
         DispatchQueue.main.async {
           let pname = self.portfolioName
-          let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: pname, funds: AppDataObservable._portfolios[pname]!)
+          let dp4ModelP = DataModelsCalculator.getDP4WModelForFunds(
+            fqName: pname,
+            displayName: pname,
+            subTitle: "", 
+            funds: AppDataObservable._portfolios[pname]!)
           self.settings.pubDP4ModelHM[pname] = dp4ModelP
           
           self.settings.pubPortfolio2DP4Funds[pname]!.removeAll()

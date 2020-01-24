@@ -150,13 +150,13 @@ fileprivate func dateLastFridays(count: Int, startAt: Date=Date(), inclusive: Bo
   return r
 }
 
-fileprivate func dateIsFriday(dateYYMMDD: String) -> Bool {
+func dateIsFriday(dateYYMMDD: String) -> Bool {
   let date = dateFromYYMMDD(dateYYMMDD: dateYYMMDD)
   let dow = Calendar.current.component(.weekday, from: date)
   return dow == 6
 }
 
-fileprivate func dateLastFridayAsYYMMDD(startAt: Date=Date(), inclusive: Bool=true) -> String {
+func dateLastFridayAsYYMMDD(startAt: Date=Date(), inclusive: Bool=true) -> String {
   let lastFriday = dateLastFriday(startAt: startAt, inclusive: inclusive)
   return dateAsYYMMDD(date: lastFriday)
 }

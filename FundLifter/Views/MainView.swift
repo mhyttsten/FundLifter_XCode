@@ -16,6 +16,18 @@ struct MainView: View {
   var body: some View {
     NavigationView {
       VStack {
+        HStack {
+          NavigationLink(destination: TopFundsView(
+            title: "Indexes",
+            dp4ws: self.settings.pubIndexes,
+            showTopFundsButton: false,
+            showUpdatePortfolioButton: false,
+            rowLimit: nil)) {
+            Text("Indexes").bold()
+          }
+          Spacer()
+        }
+
         PortfolioListView().environmentObject(self.settings)
 
         NavigationLink(destination: TestView()) { Text("TestView") }
@@ -61,16 +73,21 @@ struct PortfolioListView: View {
 
   var body: some View {
     List {
-      ForEach(settings.pubPortfolios) { dp4W in
-        self.link(dp4W: dp4W, destination: TopFundsView(portfolioName: dp4W.id, type: .PORTFOLIO)) // PortfolioView(portfolioName: dp4W.id))
+      ForEach(settings.pubPortfolios) { dp4w in
+        self.link(dp4w: dp4w,
+                  destination: TopFundsView(
+                    title: dp4w.id,
+                    dp4ws: self.settings.pubPortfolio2DP4Funds[dp4w.id]!,
+                    showTopFundsButton: D_FundInfo.PORTFOLIO_TYPES.contains(dp4w.id),
+                    showUpdatePortfolioButton: true))
       }
     }
-    .navigationBarTitle(Text("Menu"), displayMode: .large)
+//    .navigationBarTitle(Text("Menu"), displayMode: .large)
   }
 
-  private func link<Destination: View>(dp4W: DP4WModel, destination: Destination) -> some View {
-    return NavigationLink(destination: TopFundsView(portfolioName: dp4W.id, type: .PORTFOLIO)) { // .environmentObject(self.settings)) {
-      DP4WRowView(displayName: dp4W.displayName, dp4ModelKey: dp4W.id).environmentObject(self.settings)
+  private func link<Destination: View>(dp4w: DP4WModel, destination: Destination) -> some View {
+    return NavigationLink(destination: destination)  {
+      DP4WRowView(displayName: dp4w.displayName, dp4ModelKey: dp4w.id).environmentObject(self.settings)
     }
   }
 

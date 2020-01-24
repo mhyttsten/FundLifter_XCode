@@ -1,14 +1,15 @@
+////
+////  Fund4wView.swift
+////  FundLifter
+////
+////  Created by Magnus Hyttsten on 11/11/19.
+////  Copyright © 2019 Magnus Hyttsten. All rights reserved.
+////
 //
-//  Fund4wView.swift
-//  FundLifter
-//
-//  Created by Magnus Hyttsten on 11/11/19.
-//  Copyright © 2019 Magnus Hyttsten. All rights reserved.
-//
-
 import SwiftUI
 
 struct DP4WRowView: View {
+    
   @EnvironmentObject var settings: AppDataObservable
   var displayName: String = ""
   var key: String = ""
@@ -18,7 +19,7 @@ struct DP4WRowView: View {
     self.key = dp4ModelKey
     print("DP4RowView.init: \(dp4ModelKey)")
   }
-  
+
   var body: some View {
     VStack(alignment: .trailing) {
       HStack {
@@ -69,7 +70,7 @@ struct DP4WRowView: View {
   }
 }
 
-struct Fund4WView_Previews: PreviewProvider {
+struct Fund4WView_Previews1: PreviewProvider {
   static var previews: some View {
     DP4WRowView(displayName: "PPM", dp4ModelKey: "PPM")
     }

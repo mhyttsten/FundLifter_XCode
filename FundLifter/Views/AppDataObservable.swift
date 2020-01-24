@@ -7,14 +7,21 @@ public class AppDataObservable: ObservableObject {
   @Published var pubMessage = "Initializing"
   @Published var pubFundDBCreationTime = "No Fund DB File"
   @Published var pubPortfolios = [DP4WModel]()
-  @Published var pubDP4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
-  @Published var pubType2DP4Funds = [String: [DP4WModel]]()
   @Published var pubPortfolio2DP4Funds = [String: [DP4WModel]]()
 
-  public static var _allFundsDP4 = [DP4WModel]()
+  @Published var pubDP4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
+  @Published var pubType2DP4Funds = [String: [DP4WModel]]()
+
+  @Published var pubIndexes = [DP4WModel]()
+  @Published var pubIndex2DP4Funds = [String: [DP4WModel]]()
+
+  public static var _data: Data?
   public static var _allFunds = [D_FundInfo]()
-  public static var _type2Funds = [String: [D_FundInfo]]()
   public static var _typeAndName2Fund = [String: D_FundInfo]()
+  
+  public static var _type2Funds = [String: [D_FundInfo]]()
+  public static var _allFundsDP4 = [DP4WModel]()
+
   public static var _portfolios = [String: [D_FundInfo]]()
 
   private var isInitialized = false
@@ -32,7 +39,7 @@ public class AppDataObservable: ObservableObject {
       DispatchQueue.main.async { [weak self] in
         self?.pubFundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
       }
-            
+      
       // Read DB file data
       print("Reading DB file at: \(FLConstants.urlDB())")
       print("File originating from GCS: \(FLConstants.DB_FILENAME_GCS)")
@@ -52,259 +59,29 @@ public class AppDataObservable: ObservableObject {
         }
         return
       }
-
-      // Initialize data structures
-      let data = data1!
-      // print("Data read: \(data.count)")
       
-      let _ = getHexDump(data: data, sindex: 0, eindex: 1024)
+      AppDataObservable._data = data1
+      // print("Data read: \(AppDataObservable._data!.count)")
+      // let _ = getHexDump(data: data, sindex: 0, eindex: 1024)
       // print("Hex dump\n\(s)")
       
-      var cindex = 0
-      while cindex < data.count {
-        let fundInfo = D_FundInfo()
-        
-        // var startTag = ""
-        (cindex, _) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("startTag: \(startTag) |\(cindex)") }
-        
-        // var recordLength = 0
-        (cindex, _) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
-        // recordLength += 6  // Record length in file does not include startTag.  Adding its length to match cindex at end
-        // print("recordLength: \(recordLength) |\(cindex)")
-        
-        // var notUsed = false
-        (cindex, _) = FLBinaryIOUtils.readBoolJava(data: data, sindex: cindex)
-        // print("notUsed: \(notUsed) |\(cindex)")
-        
-        var url = ""
-        (cindex, url) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("url: \(url) |\(cindex)")
-        fundInfo._url = url
-        
-        var isValid = false
-        (cindex, isValid) = FLBinaryIOUtils.readBoolJava(data: data, sindex: cindex)
-        // print("isValid: \(isValid) |\(cindex)")
-        fundInfo._isValid = isValid
-        
-        var errorCode = 0
-        (cindex, errorCode) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
-        // print("errorCode: \(errorCode) |\(cindex)")
-        fundInfo._errorCode = errorCode
-        
-        var lastExtractInfo = ""
-        (cindex, lastExtractInfo) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("lastExtractInfo: \(lastExtractInfo) |\(cindex)")
-        fundInfo._lastExtractInfo = lastExtractInfo
-        
-        var type = ""
-        (cindex, type) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("type: \(type) |\(cindex)")
-        fundInfo._type = type
-        
-        var nameMS = ""
-        (cindex, nameMS) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("nameMS: \(nameMS) |\(cindex)")
-        fundInfo._nameMS = nameMS
-        
-        var nameOrig = ""
-        (cindex, nameOrig) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("nameOrig: \(nameOrig) |\(cindex)")
-        fundInfo._nameOrig = nameOrig
-        
-        var dateUpdated = ""
-        (cindex, dateUpdated) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("dateUpdated: \(dateUpdated) |\(cindex)")
-        fundInfo._dateUpdated = dateUpdated
-        
-        var dateUpdateAttempted = ""
-        (cindex, dateUpdateAttempted) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("dateUpdateAttempted: \(dateUpdateAttempted) |\(cindex)")
-        fundInfo._dateUpdateAttempted = dateUpdateAttempted
-        
-        var msRating = 0
-        (cindex, msRating) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
-        // print("msRating: \(msRating) |\(cindex)")
-        fundInfo._msRating = msRating
-        
-        var ppmNumber = ""
-        (cindex, ppmNumber) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("ppmNumber: \(ppmNumber) |\(cindex)")
-        fundInfo._ppmNumber = ppmNumber
-        
-        var categoryName = ""
-        (cindex, categoryName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("categoryName: \(categoryName) |\(cindex)")
-        fundInfo._categoryName = categoryName
-        
-        var indexName = ""
-        (cindex, indexName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("indexName: \(indexName) |\(cindex)")
-        fundInfo._indexName = indexName
-        
-        var currencyName = ""
-        (cindex, currencyName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-        // print("currencyName: \(currencyName) |\(cindex)")
-        fundInfo._currencyName = currencyName
-        
-        var dpDayCount = 0
-        while true {  // Existance of DP end tag creates break
-          var tag = ""
-          (cindex, tag) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-          // print("tag: \(tag) |\(cindex)")
-          
-          if tag == "DPYS" {
-            var fundDPYear = D_FundDPYear()
-            var year = 0
-            (cindex, year) = FLBinaryIOUtils.readInt16Java(data: data, sindex: cindex)
-            // print("year: \(year) |\(cindex)")
-            fundDPYear._year = year
-            
-            var fund: Double? = nil
-            (cindex, fund) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("fund: \(fund) |\(cindex)")
-            fundDPYear._yieldFund = fund
-            
-            var category: Double? = nil
-            (cindex, category) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("category: \(category) |\(cindex)")
-            fundDPYear._yieldCategory = category
-            
-            var index: Double? = nil
-            (cindex, index) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("index: \(index) |\(cindex)")
-            fundDPYear._yieldIndex = index
-            
-            fundInfo._dpYears.append(fundDPYear)
-          } else if tag == "DPDS" {
-            var fundDPDay = D_FundDPDay()
-            
-            var dateYYMMDD = ""
-            (cindex, dateYYMMDD) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-            // print("dateYYMMDD: \(dateYYMMDD) |\(cindex)")
-            fundDPDay._dateYYMMDD = dateYYMMDD
-            
-            var dateYYMMDD_Actual = ""
-            (cindex, dateYYMMDD_Actual) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-            // print("dateYYMMDD_Actual: \(dateYYMMDD_Actual) |\(cindex)")
-            fundDPDay._dateYYMMDD_Actual = dateYYMMDD_Actual
-            
-            var currency = ""
-            (cindex, currency) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
-            // print("currency: \(currency) |\(cindex)")
-            fundDPDay._currency = currency
-            
-            var r1d: Double? = nil
-            (cindex, r1d) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r1d: \(r1d) |\(cindex)")
-            fundDPDay._r1d = r1d
-            
-            var r1w: Double? = nil
-            (cindex, r1w) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r1w: \(r1w) |\(cindex)")
-            fundDPDay._r1w = r1w
-            
-            var r1m: Double? = nil
-            (cindex, r1m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r1m: \(r1m) |\(cindex)")
-            fundDPDay._r1m = r1m
-            
-            var r3m: Double? = nil
-            (cindex, r3m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r3m: \(r3m) |\(cindex)")
-            fundDPDay._r3m = r3m
-            
-            var r6m: Double? = nil
-            (cindex, r6m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r6m: \(r6m) |\(cindex)")
-            fundDPDay._r6m = r6m
-            
-            var r1y: Double? = nil
-            (cindex, r1y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r1y: \(r1y) |\(cindex)")
-            fundDPDay._r1y = r1y
-            
-            var r3y: Double? = nil
-            (cindex, r3y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r3y: \(r3y) |\(cindex)")
-            fundDPDay._r3y = r3y
-            
-            var r5y: Double? = nil
-            (cindex, r5y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r5y: \(r5y) |\(cindex)")
-            fundDPDay._r5y = r5y
-            
-            var r10y: Double? = nil
-            (cindex, r10y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("r10y: \(r10y) |\(cindex)")
-            fundDPDay._r10y = r10y
-            
-            var rYTDFund: Double? = nil
-            (cindex, rYTDFund) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("rYTDFund: \(rYTDFund) |\(cindex)")
-            fundDPDay._rYTDFund = rYTDFund
-            
-            var rYTDCategory: Double? = nil
-            (cindex, rYTDCategory) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("rYTDCategory: \(rYTDCategory) |\(cindex)")
-            fundDPDay._rYTDCategory = rYTDCategory
-            
-            var rYTDIndex: Double? = nil
-            (cindex, rYTDIndex) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
-            // print("rYTDIndex: \(rYTDIndex) |\(cindex)")
-            fundDPDay._rYTDIndex = rYTDIndex
-            
-            fundInfo._dpDays.append(fundDPDay)
-            dpDayCount += 1
-          } else if tag == "DFIE" {
-            break
-          }
-        }  // End of while, retrieving DPYear and DPDay
-
-        
-        // Validate DPD date sequence, in decending order starting from lowest index
-        // This takes like a minute!
-        // Run it now and again, but it should be validated by server already
-//        var cdate = dateLastFridayAsYYMMDD()
-//        for dpd in fundInfo._dpDays {
-//          if !dateIsFriday(dateYYMMDD: dpd._dateYYMMDD) {
-//            fatalError("*** For \(fundInfo.typeAndName), dpd was not a friday: \(dpd._dateYYMMDD)")
-//          }
-//          if dpd._dateYYMMDD > cdate {
-//            fatalError("*** For \(fundInfo.typeAndName), dpd was not strictly decending: \(dpd._dateYYMMDD)")
-//          }
-//          cdate = dpd._dateYYMMDD
-//          cdate = dateLastFridayAsYYMMDD(startAt: dateFromYYMMDD(dateYYMMDD: cdate), inclusive: false)
-//        }
-//        print("Did fund: \(fundInfo.typeAndName)")
-        
-        if let _ = AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] {
-          let s = "Duplicate fund found in database: \(fundInfo.typeAndName)"
-          logFileAppend(s: s)
-          fatalError(s)
-        }
-        print("Adding typeAndName: \(fundInfo.typeAndName)")
-        AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] = fundInfo
-        AppDataObservable._allFunds.append(fundInfo)
-        if !AppDataObservable._type2Funds.keys.contains(fundInfo._type) {
-          AppDataObservable._type2Funds[fundInfo._type] = [D_FundInfo]()
-        }
-        AppDataObservable._type2Funds[fundInfo._type]!.append(fundInfo)
-      } // End of while, retrieving FundInfo
-      
-      AppDataObservable._allFunds.sort { $0.typeAndName < $1.typeAndName }
-      print("Done reading all funds, total: \(AppDataObservable._allFunds.count)")
-      print("   nonNullCounts: \(FLBinaryIOUtils.nonNullCounts), nullCounts: \(FLBinaryIOUtils.nullCounts)")
+      // Populates: _allFunds, and _typeAndName2Fund
+      AppDataObservable.decodeFunds()
+      AppDataObservable._data = nil
       
       for fi in AppDataObservable._allFunds {
+        // _type2Funds
+        if !AppDataObservable._type2Funds.keys.contains(fi._type) {
+          AppDataObservable._type2Funds[fi._type] = [D_FundInfo]()
+        }
+        AppDataObservable._type2Funds[fi._type]!.append(fi)
+        
+        // _allFundsDP4
         let fdm = DataModelsCalculator.getDP4WModelForFund(fund: fi)
         AppDataObservable._allFundsDP4.append(fdm)
       }
       
-      // Populates: AppDataObservable._portfolios[type]!.append(fund)
-      // let portfoliosReadStr = PortfolioIO.read()
-
-      // GCS way of doing things
+      // Get portfolios from GCS
       AppDataObservable.initializeEmptyPortfolios()
       CoreIO.gcsRead(fromFile: FLConstants.PORTFOLIO_FILENAME_GCS) {
         
@@ -313,7 +90,7 @@ public class AppDataObservable: ObservableObject {
           message = "Error GCS fetching portfolio: \(error)"
         }
         else if let data=$0 {
-          // Assign: AppDataObservable._portfolios[type]
+          // _portfolios
           let (error, portfolioCount) = portfolioDecode(data: data)
           if let error=error {
             message = "Error decoding portfolio: \(error)"
@@ -322,19 +99,20 @@ public class AppDataObservable: ObservableObject {
           }
         }
         
-        // All _ datastructures initialize, initialize the @Published ones
+        // Portfolio retrieved from GCS
+        // Now initialize all @Published structures
         DispatchQueue.main.async { [weak self] in
+          // Initialize status message on # funds & portfolios
+          self?.pubMessage = message
+          
           // Create DP4W for all funds
           for fi in AppDataObservable._allFundsDP4 {
             self?.pubDP4ModelHM[fi.id] = fi
           }
-        
-          // Initialize status message on # funds & portfolios
-          self?.pubMessage = message
-        
+          
           // Display the portfolios
           for p in AppDataObservable._portfolios.keys.sorted() {
-            let dp4ModelP = DataModelsCalculator.getDP4WModelForPortfolio(name: p, funds: AppDataObservable._portfolios[p]!)
+            let dp4ModelP = DataModelsCalculator.getDP4WModelForFunds(fqName: p, displayName: p, subTitle: "", funds: AppDataObservable._portfolios[p]!)
             self?.pubPortfolios.append(dp4ModelP)
             self?.pubDP4ModelHM[p] = dp4ModelP
             
@@ -347,7 +125,7 @@ public class AppDataObservable: ObservableObject {
               self?.pubPortfolio2DP4Funds[p]!.append(dp4w)
             }
           }
-        
+          
           // Type 2 [DP4WModel]
           for fi in AppDataObservable._allFunds {
             if self?.pubType2DP4Funds.keys.contains(fi._type) == false {
@@ -359,6 +137,43 @@ public class AppDataObservable: ObservableObject {
             }
             self?.pubType2DP4Funds[fi._type]!.append(a)
           }
+          
+          // Indexes
+          var index2FundInfo = [String: [D_FundInfo]]()
+          var indexFundCount = 0
+          var indexNullCount = 0
+          for fi in AppDataObservable._allFunds {
+            if self?.pubIndex2DP4Funds.keys.contains(fi._indexName) == false {
+              self?.pubIndex2DP4Funds[fi._indexName] = [DP4WModel]()
+            }
+            guard let a = self?.pubDP4ModelHM[fi.typeAndName] else {
+              fatalError("Fund expected to exist: \(fi.typeAndName)")
+            }
+            self?.pubIndex2DP4Funds[fi._indexName]!.append(a)
+            
+            if !index2FundInfo.keys.contains(fi._indexName) {
+              index2FundInfo[fi._indexName] = [D_FundInfo]()
+            }
+            index2FundInfo[fi._indexName]!.append(fi)
+            if fi._indexName.count == 0 || fi._indexName == "-" {
+              indexNullCount += 1
+            }
+            indexFundCount += 1
+          }
+          print("Indexes, number of them: \(index2FundInfo.count)")
+          print("Indexes, fund# without index: \(indexNullCount)")
+
+          for iname in index2FundInfo.keys {
+            let indexFunds = index2FundInfo[iname]!
+            let displayName = "\(iname) [\(indexFunds.count)]"
+            let dp4ModelP = DataModelsCalculator.getDP4WModelForFunds(
+              fqName: iname,
+              displayName: displayName,
+              subTitle: "N/A",
+              funds: indexFunds)
+            self?.pubIndexes.append(dp4ModelP)
+          }
+          
         }  // End: DispatchQueue.main.async
       }  // End: GCS portfolio file fetched closure
     }  // End: DispatchQueue.global
@@ -371,6 +186,228 @@ public class AppDataObservable: ObservableObject {
       AppDataObservable._portfolios[t] = [D_FundInfo]()
     }
   }
+  
+  private static func decodeFunds() {
+    var cindex = 0
+    let data = AppDataObservable._data!
+    while cindex < data.count {
+      let fundInfo = D_FundInfo()
+      
+      // var startTag = ""
+      (cindex, _) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("startTag: \(startTag) |\(cindex)") }
+      
+      // var recordLength = 0
+      (cindex, _) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
+      // recordLength += 6  // Record length in file does not include startTag.  Adding its length to match cindex at end
+      // print("recordLength: \(recordLength) |\(cindex)")
+      
+      // var notUsed = false
+      (cindex, _) = FLBinaryIOUtils.readBoolJava(data: data, sindex: cindex)
+      // print("notUsed: \(notUsed) |\(cindex)")
+      
+      var url = ""
+      (cindex, url) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("url: \(url) |\(cindex)")
+      fundInfo._url = url
+      
+      var isValid = false
+      (cindex, isValid) = FLBinaryIOUtils.readBoolJava(data: data, sindex: cindex)
+      // print("isValid: \(isValid) |\(cindex)")
+      fundInfo._isValid = isValid
+      
+      var errorCode = 0
+      (cindex, errorCode) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
+      // print("errorCode: \(errorCode) |\(cindex)")
+      fundInfo._errorCode = errorCode
+      
+      var lastExtractInfo = ""
+      (cindex, lastExtractInfo) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("lastExtractInfo: \(lastExtractInfo) |\(cindex)")
+      fundInfo._lastExtractInfo = lastExtractInfo
+      
+      var type = ""
+      (cindex, type) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("type: \(type) |\(cindex)")
+      fundInfo._type = type
+      
+      var nameMS = ""
+      (cindex, nameMS) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("nameMS: \(nameMS) |\(cindex)")
+      fundInfo._nameMS = nameMS
+      
+      var nameOrig = ""
+      (cindex, nameOrig) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("nameOrig: \(nameOrig) |\(cindex)")
+      fundInfo._nameOrig = nameOrig
+      
+      var dateUpdated = ""
+      (cindex, dateUpdated) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("dateUpdated: \(dateUpdated) |\(cindex)")
+      fundInfo._dateUpdated = dateUpdated
+      
+      var dateUpdateAttempted = ""
+      (cindex, dateUpdateAttempted) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("dateUpdateAttempted: \(dateUpdateAttempted) |\(cindex)")
+      fundInfo._dateUpdateAttempted = dateUpdateAttempted
+      
+      var msRating = 0
+      (cindex, msRating) = FLBinaryIOUtils.readInt32Java(data: data, sindex: cindex)
+      // print("msRating: \(msRating) |\(cindex)")
+      fundInfo._msRating = msRating
+      
+      var ppmNumber = ""
+      (cindex, ppmNumber) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("ppmNumber: \(ppmNumber) |\(cindex)")
+      fundInfo._ppmNumber = ppmNumber
+      
+      var categoryName = ""
+      (cindex, categoryName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("categoryName: \(categoryName) |\(cindex)")
+      fundInfo._categoryName = categoryName
+      
+      var indexName = ""
+      (cindex, indexName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("indexName: \(indexName) |\(cindex)")
+      fundInfo._indexName = indexName
+      
+      var currencyName = ""
+      (cindex, currencyName) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+      // print("currencyName: \(currencyName) |\(cindex)")
+      fundInfo._currencyName = currencyName
+      
+      var dpDayCount = 0
+      while true {  // Existance of DP end tag creates break
+        var tag = ""
+        (cindex, tag) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+        // print("tag: \(tag) |\(cindex)")
+        
+        if tag == "DPYS" {
+          var fundDPYear = D_FundDPYear()
+          var year = 0
+          (cindex, year) = FLBinaryIOUtils.readInt16Java(data: data, sindex: cindex)
+          // print("year: \(year) |\(cindex)")
+          fundDPYear._year = year
+          
+          var fund: Double? = nil
+          (cindex, fund) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("fund: \(fund) |\(cindex)")
+          fundDPYear._yieldFund = fund
+          
+          var category: Double? = nil
+          (cindex, category) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("category: \(category) |\(cindex)")
+          fundDPYear._yieldCategory = category
+          
+          var index: Double? = nil
+          (cindex, index) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("index: \(index) |\(cindex)")
+          fundDPYear._yieldIndex = index
+          
+          fundInfo._dpYears.append(fundDPYear)
+        } else if tag == "DPDS" {
+          var fundDPDay = D_FundDPDay()
+          
+          var dateYYMMDD = ""
+          (cindex, dateYYMMDD) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+          // print("dateYYMMDD: \(dateYYMMDD) |\(cindex)")
+          fundDPDay._dateYYMMDD = dateYYMMDD
+          
+          var dateYYMMDD_Actual = ""
+          (cindex, dateYYMMDD_Actual) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+          // print("dateYYMMDD_Actual: \(dateYYMMDD_Actual) |\(cindex)")
+          fundDPDay._dateYYMMDD_Actual = dateYYMMDD_Actual
+          
+          var currency = ""
+          (cindex, currency) = FLBinaryIOUtils.readUTFJava(data: data, sindex: cindex)
+          // print("currency: \(currency) |\(cindex)")
+          fundDPDay._currency = currency
+          
+          var r1d: Double? = nil
+          (cindex, r1d) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r1d: \(r1d) |\(cindex)")
+          fundDPDay._r1d = r1d
+          
+          var r1w: Double? = nil
+          (cindex, r1w) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r1w: \(r1w) |\(cindex)")
+          fundDPDay._r1w = r1w
+          
+          var r1m: Double? = nil
+          (cindex, r1m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r1m: \(r1m) |\(cindex)")
+          fundDPDay._r1m = r1m
+          
+          var r3m: Double? = nil
+          (cindex, r3m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r3m: \(r3m) |\(cindex)")
+          fundDPDay._r3m = r3m
+          
+          var r6m: Double? = nil
+          (cindex, r6m) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r6m: \(r6m) |\(cindex)")
+          fundDPDay._r6m = r6m
+          
+          var r1y: Double? = nil
+          (cindex, r1y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r1y: \(r1y) |\(cindex)")
+          fundDPDay._r1y = r1y
+          
+          var r3y: Double? = nil
+          (cindex, r3y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r3y: \(r3y) |\(cindex)")
+          fundDPDay._r3y = r3y
+          
+          var r5y: Double? = nil
+          (cindex, r5y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r5y: \(r5y) |\(cindex)")
+          fundDPDay._r5y = r5y
+          
+          var r10y: Double? = nil
+          (cindex, r10y) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("r10y: \(r10y) |\(cindex)")
+          fundDPDay._r10y = r10y
+          
+          var rYTDFund: Double? = nil
+          (cindex, rYTDFund) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("rYTDFund: \(rYTDFund) |\(cindex)")
+          fundDPDay._rYTDFund = rYTDFund
+          
+          var rYTDCategory: Double? = nil
+          (cindex, rYTDCategory) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("rYTDCategory: \(rYTDCategory) |\(cindex)")
+          fundDPDay._rYTDCategory = rYTDCategory
+          
+          var rYTDIndex: Double? = nil
+          (cindex, rYTDIndex) = FLBinaryIOUtils.readFloatAsDoubleJava(data: data, sindex: cindex)
+          // print("rYTDIndex: \(rYTDIndex) |\(cindex)")
+          fundDPDay._rYTDIndex = rYTDIndex
+          
+          fundInfo._dpDays.append(fundDPDay)
+          dpDayCount += 1
+        } else if tag == "DFIE" {
+          break
+        }
+      }  // End of while, retrieving DPYear and DPDay
+
+      // Validate DPD date sequence, in decending order starting from lowest index
+      // This takes like a minute!
+      // Run it now and again, but it should be validated by server already
+      // validateDPDSequence(fundInfo: fundInfo)
+      
+      if let _ = AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] {
+        let s = "Duplicate fund found in database: \(fundInfo.typeAndName)"
+        logFileAppend(s: s)
+        fatalError(s)
+      }
+      // print("Adding typeAndName: \(fundInfo.typeAndName)")
+      AppDataObservable._typeAndName2Fund[fundInfo.typeAndName] = fundInfo
+      AppDataObservable._allFunds.append(fundInfo)
+    }
+    AppDataObservable._allFunds.sort { $0.typeAndName < $1.typeAndName }
+    print("Done reading all funds, total: \(AppDataObservable._allFunds.count)")
+    print("   nonNullCounts: \(FLBinaryIOUtils.nonNullCounts), nullCounts: \(FLBinaryIOUtils.nullCounts)")
+  }  // End of function decodeFunds
 }
 
 public func portfolioDecode(data: Data) -> (String?, Int) {
@@ -422,6 +459,22 @@ public func portfolioEncode() -> Data {
   }
   return data
 }
+
+func validateDPDSequence(fundInfo: D_FundInfo) {
+  var cdate = dateLastFridayAsYYMMDD()
+  for dpd in fundInfo._dpDays {
+    if !dateIsFriday(dateYYMMDD: dpd._dateYYMMDD) {
+      fatalError("*** For \(fundInfo.typeAndName), dpd was not a friday: \(dpd._dateYYMMDD)")
+    }
+    if dpd._dateYYMMDD > cdate {
+      fatalError("*** For \(fundInfo.typeAndName), dpd was not strictly decending: \(dpd._dateYYMMDD)")
+    }
+    cdate = dpd._dateYYMMDD
+    cdate = dateLastFridayAsYYMMDD(startAt: dateFromYYMMDD(dateYYMMDD: cdate), inclusive: false)
+  }
+  print("Did fund: \(fundInfo.typeAndName)")
+}
+
 
 //func urlDownload() {
 //  // Create destination URL

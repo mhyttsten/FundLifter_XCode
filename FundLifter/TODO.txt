@@ -1,7 +1,13 @@
 Create your spreadsheet with funds and indexes
 
+TopFunds: Click on index to see funds (add destination view when clicked)
+   Fund list needs to be prefixed by type
+TopFunds: Go lower than 1w --> sort by Morningstar stars for fund lists, sort by #funds for index lists
+TopFunds: Move Y2D to right hand of ranking, let name take up as much space as possible
+   Maybe lower text size if exceeds x characters?
 
 Post-release Fixes
+FL: Add fund click on TopFunds list -> gives graph + fund data
 FL: Remove normal fund view, now that everyone uses 'Top Fund' view
 FL: Fix log, and allow for a log display window
 FL: Fix date update after you've done a DB update

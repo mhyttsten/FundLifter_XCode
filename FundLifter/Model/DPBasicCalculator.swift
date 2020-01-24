@@ -46,7 +46,10 @@ public class DataModelsCalculator {
     return rv
   }
   
-  public static func getDP4WModelForPortfolio(name: String, funds: [D_FundInfo]) -> DP4WModel {
+  public static func getDP4WModelForFunds(fqName: String,
+                                          displayName: String,
+                                          subTitle: String,
+                                          funds: [D_FundInfo]) -> DP4WModel {
 //    print("getDP4WModelForPortfolio: \(name)")
 
     let datesWeeks =  dateLastFridaysAsYYMMDD()
@@ -99,7 +102,7 @@ public class DataModelsCalculator {
       vYPercentValid = [0.0]
     }
 
-    var dp4w = DP4WModel(fqName: name, displayName: name, subTitle: "N/A")
+    var dp4w = DP4WModel(fqName: fqName, displayName: displayName, subTitle: subTitle)
     dp4w.dpWs = vWAverage
 //    print("      fdpWs[\(dp4w.dpWs.count)]: \(dp4w.dpWs)")
     dp4w.dpWsValidityPercent = vWPercentValid
