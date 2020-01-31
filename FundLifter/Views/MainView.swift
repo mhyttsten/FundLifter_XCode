@@ -19,7 +19,9 @@ struct MainView: View {
         HStack {
           NavigationLink(destination: TopFundsView(
             title: "Indexes",
+            rowType: .INDEXES,
             dp4ws: self.settings.pubIndexes,
+            showTypePrefix: false,
             showTopFundsButton: false,
             showUpdatePortfolioButton: false,
             rowLimit: nil)) {
@@ -70,14 +72,15 @@ struct PortfolioListView: View {
 //  NavigationLink(destination: TopFundsView(portfolioName: portfolioName)) {
 //    Text("Top Funds").bold()
 //  }
-
   var body: some View {
     List {
       ForEach(settings.pubPortfolios) { dp4w in
         self.link(dp4w: dp4w,
                   destination: TopFundsView(
                     title: dp4w.id,
+                    rowType: .FUNDS,
                     dp4ws: self.settings.pubPortfolio2DP4Funds[dp4w.id]!,
+                    showTypePrefix: false,
                     showTopFundsButton: D_FundInfo.PORTFOLIO_TYPES.contains(dp4w.id),
                     showUpdatePortfolioButton: true))
       }

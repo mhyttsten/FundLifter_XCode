@@ -16,21 +16,29 @@ struct TopFundsView: View {
   @State var coverageMessage = "Not calculated"
   @State private var show_modal: Bool = false
   
+  public enum RowType { case FUNDS, INDEXES }
+  
   public var title: String = ""
+  public var rowType: RowType = .FUNDS
   public var dp4ws = [DP4WModel]()
+  public var showTypePrefix = false
   public var showTopFundsButton = false
   public var showUpdatePortfolioButton = false
   public var rowLimit: Int? = nil
   
   public init(title: String,
+              rowType: RowType,
               dp4ws: [DP4WModel],
+              showTypePrefix: Bool,
               showTopFundsButton: Bool,
               showUpdatePortfolioButton: Bool,
               rowLimit: Int? = 50) {
     self.title = title
+    self.rowType = rowType
     self.dp4ws = dp4ws
-    self.showUpdatePortfolioButton = showUpdatePortfolioButton
+    self.showTypePrefix = showTypePrefix
     self.showTopFundsButton = showTopFundsButton
+    self.showUpdatePortfolioButton = showUpdatePortfolioButton
     self.rowLimit = rowLimit
   }
   
@@ -39,7 +47,9 @@ struct TopFundsView: View {
       if showTopFundsButton {
         HStack {
           NavigationLink(destination: TopFundsView(title: title,
+                                                   rowType: .FUNDS,
                                                    dp4ws: settings.pubType2DP4Funds[title]!,
+                                                   showTypePrefix: false,
                                                    showTopFundsButton: false,
                                                    showUpdatePortfolioButton: false)) {
             Text("Top Funds").bold()
@@ -69,10 +79,28 @@ struct TopFundsView: View {
 //          self.initializeFundList()
         }
       }, label: { Text("Duration: \(getListDuration())") })
-      
+
+//      return NavigationLink(destination: destination)  {
+//        DP4WRowView(displayName: dp4w.displayName, dp4ModelKey: dp4w.id).environmentObject(self.settings)
+//      }
       List {
         ForEach(getFundList())   { dp4w in
-          DP4WRowView2(displayName: dp4w.displayName, model: dp4w)
+          if self.rowType == .FUNDS {
+            NavigationLink(destination: FundView(typeAndName: dp4w.id)) {
+              DP4WRowView2(displayName: self.showTypePrefix ? dp4w.id : dp4w.displayName,
+                           model: dp4w)
+            }
+          } else {
+            NavigationLink(destination: TopFundsView(
+              title: "\(dp4w.displayName)",
+              rowType: .FUNDS,
+              dp4ws: self.settings.pubIndex2DP4Funds[dp4w.id]!,
+              showTypePrefix: true,
+              showTopFundsButton: false,
+              showUpdatePortfolioButton: false)) {
+              DP4WRowView2(displayName: dp4w.displayName, model: dp4w)
+            }
+          }
         }
       }
       Spacer()

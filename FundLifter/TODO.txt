@@ -1,8 +1,7 @@
 Create your spreadsheet with funds and indexes
 
-TopFunds: Click on index to see funds (add destination view when clicked)
-   Fund list needs to be prefixed by type
 TopFunds: Go lower than 1w --> sort by Morningstar stars for fund lists, sort by #funds for index lists
+TopFunds: Implement FundView
 TopFunds: Move Y2D to right hand of ranking, let name take up as much space as possible
    Maybe lower text size if exceeds x characters?
 

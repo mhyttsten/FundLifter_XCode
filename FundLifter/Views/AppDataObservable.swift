@@ -31,6 +31,8 @@ public class AppDataObservable: ObservableObject {
     }
     isInitialized = true
     
+    main_AllAboutSwift()
+    
     DispatchQueue.global(qos: .userInteractive).async { [weak self] in
       guard let self=self else {
         return
