@@ -1695,15 +1695,314 @@ class ClosureEscapes {
        import Darwin.C  // Enables the arc4random_uniform(UInt32(count - i)) function
        #endif
  
-    LLVM
-       SSA - Static Single Assignment
-       ELF - Executable and Linkable Format (object file format)
-       DWARF - Debugging data format designed along ELF but is independent of object file formats
+ *****************************
+ LLVM
+   SSA - Static Single Assignment
+   ELF - Executable and Linkable Format (object file format)
+   DWARF - Debugging data format designed along ELF but is independent of object file formats
+   Darwin: Apple Unix-OS that are the core components of macOS, iOS, watchOS, tvOS, and iPadOS
  
-       Darwin
- 
- 
+ ************** Tutorial-General
+     https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html
+     github.com/llvm/examples/Kaleidoscope (but I've forked it)
+     clang++ -g -O3 toy.cpp `llvm-config --cxxflags --ldflags --libs --system-libs` -std=c++14
+     See LLVM installation instructions on 2019 Dev HowTo: https://docs.google.com/document/d/1t8cqxvkFD3TFOmdoVM0zOBRr8bXfukabjd90OA7Q6S0/edit#
 
+ ************** Tutorial #1: Language and Lexer (no LLVM)
+ ************** Tutorial #2: Parser & AST
+ No LLVM code
+   ExprAST
+   NumberExprAST (value: Double)
+   VariableExprAST (name: String)
+   BinaryOpExprAST (op: Character, lhs: ExprAST, rhs: ExprAST)
+   CallExprAST (callee: String, args: [ExprAST])
+   PrototypeAST (calleeName: String, args: [String])       // Function prototype
+   FunctionAST (proto: PrototypeAST, body: ExprAST)  // Function body
+
+ Now we can write
+   def foo(x y) x + foo(y, 4.0)
+   extern sin(a);
+     
+ ************** Tutorial #3: Code Generation to LLVM IR
+   ExprAST
+     virtual Value *codegen()
+   LLVM classes
+     Value: Represent a SSA register (or value) in LLVM. There is no way to change an SSA value
+     LLVMContext: Holds core LLVM data structures (type & constant tables). Normally just passed around.
+     IRBuilder<>: Makes it easy to generate LLVM instructions
+     Module: Contains functions and global variables (top level structure IR uses to hold code)
+     std::map<std::string, Value *> NamedValues: Values defined in current scope + their LLVM representation
+       I.e. symbol table for the code. For now, only has function parameters for their function body
+ 
+     NumberExprAST
+       return ConstantFP:get(context, APFloat(value))
+     VariableExprAST
+       return NamedValues[name]
+     BinaryExprAST
+       l = lhs->codegen();
+       r = rhs->codegen();
+       For +, -, *:
+         return Builder.CreateFAdd, FSub, , FMul (l, r, "opnametmp")
+       Or if '<'
+         l = Builder.CreateFCmpULT(l, r, "cmptmp")
+         return Builder.CreateUIToFP(l, Type::getDoubleTy(context), "booltmp")  // Bool -> Double 0.0 or 1.0
+     CallExprAST
+       Function* calleeF = module->getFunction(calleeName)
+       std::vector<Value *> ArgsV;
+       for a in args
+          ArgsV.push_back(a.codegen())
+       return Builder.CreateCall(calleeF, ArgsV, "calltmp")
+     PrototypeAST  // This is as far as we need to go for 'extern' functions
+       FunctionType* ft = FunctionType::get(Type::getDoubleTy(context),  // Return
+                                            Doubles(args.count, Double::getDoubleTy(context)  // [args]
+                                            false)  // Not vararg
+       Function* f = Function::Create(ft,
+                                      Function:ExternalLinkage  // Defined or callable pot. outside scope
+                                      module.get())  // Register in modules symbol table
+       for (idx, a) in f->args()  // Set name of each argument. Each arg is of Value
+          a.setName(args[idx])
+     FunctionAST  // Function definition for non-'extern' functions
+       Function* f = module->getFunction(proto->getName())  // Do we have an 'extern' function prototype?
+       if f == nil { f = proto->codegen() } // If no prev proto, then generate code
+       BasicBlock* bb = BasicBlock::create(context, "entry", f)  // Multiple used for control-flow
+       builder.SetInsertPoint(bb)
+       NamedValues.clear()
+       for a in f->args() { NamedValues[a.getName()] = &a }  // Name to Function* arg instance
+       Value* return = body->codegen()
+       Builder.CreateRet(return)
+       verifyFunction(*f);  // LLVM function that validates the generated code
+       return f
+ 
+    Example code generation
+    define double @foo(double %a, double %b) {
+    entry:
+      %multmp = fmul double %a, %a
+      %multmp1 = fmul double 2.000000e+00, %a
+      %multmp2 = fmul double %multmp1, %b
+      %addtmp = fadd double %multmp, %multmp2
+      %multmp3 = fmul double %b, %b
+      %addtmp4 = fadd double %addtmp, %multmp3
+      ret double %addtmp4
+    }
+    ready> extern cos(x);
+    Read extern:
+    declare double @cos(double)
+    ready> cos(1.234);
+    Read top-level expression:
+    define double @1() {
+    entry:
+      %calltmp = call double @cos(double 1.234000e+00)
+      ret double %calltmp
+    }
+     
+   Initialization of code generator
+     static LLVMContext TheContext;
+     static IRBuilder<> Builder(TheContext);
+     static std::unique_ptr<Module> TheModule;
+     static std::map<std::string, Value *> NamedValues;
+     main() {
+        TheModule = std::make_unique<Module>("my cool jit", TheContext)
+        MainLoop()
+           // This does 3 main top-level things: handleDefinition/Extern/TopLevelExpression
+           // Each performs Value* v = topLevelThing->codegen()
+           v->print(erros())  // Prints its code
+        TheModule->print(errs(), nullptr)  // Print its LLVM code
+     }
+ 
+ 
+ ************** Tutorial #4: Adding JIT and Optimizer Support
+   Get per function optimization
+      int main()... {
+         TheModule = std::make_unique<Module>("my cool jit", TheContext)
+         TheFPM = std::make_unique<FunctionPassManager>(TheModule.get())
+         TheFPM->add(createInstructionCombiningPass());  // Peephole optimizations
+         TheFPM->add(createReassociatePass());  // RoE
+         TheFPM->add(createGVNPass());  // CSE
+         TheFPM->add(createCFGSimplificationPass());  // Control-flow, eliminate unreachable code, etc
+         TheFPM->doInitialization();
+      }
+      In FunctionAST:codegen(), we do body->codgen(), ... {
+         verifyFunction()
+         TheFPM->run(*TheFunction)  // This will run optimization passes on the function body
+         return TheFunction
+      }
+   LLVM Code
+      - Dump the human readable IR, write to binary form, generate assembly (.s)
+      - JIT compile it
+        void InitializeModuleAndPassManager(void) {
+          TheModule = std::make_unique<Module>("my cool jit", TheContext);
+          TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
+          TheFPM = std::make_unique<FunctionPassManager>(TheModule.get());
+        int main()...{
+           InitializeNativeTarget()
+           InitializeNativeTargetAsmPrinter()
+           InitializeNativeTargetAsmParser()
+           ...
+           TheJIT = std::make_unique<KaleidoscopeJIT>();
+           initializeModuleAndPassManager()
+           MainLoop() {
+              // This is done in
+              handleTopLevelExpression() {  // JIT compile
+                 Value* fnt = ParseTopLevelExpr->codegen()  // Top-level expr becomes a function proto & body named __anon_expr
+                 auto H = TheJIT->addModule(std::move(TheModule));  // JIT the module to native ABI
+                 InitializeModuleAndPassManager()  // Prev stmt means nothing more can be added to TheModule, so create new one
+                 auto ExprSymbol = TheJIT->findSymbol("__anon_expr");  // Get handle to pointer of generated code
+                 double (*FP)() = (double (*)())(intptr_t)ExprSymbol.getAddress();  // Expr code takes no arg and returns double
+                 fprintf(stderr, "Evaluated to %f\n", FP());
+                 TheJIT->removeModule(H);  // Throw away __anon_expr, there is no re-evaluation of top-level expressions
+              }
+        }
+    As you can see, we JIT modules (and then we cannot add anything else to that module)
+    If in above example, we had a function definintion before the top level expression
+       It would have been discarded when we JITted the top-level expression
+    So evolution of above is to generate separate modules for functions (and JIT them)
+    Calling "extern" functions work, as JIT fallbacks to dsym("<name>") on process, so if it's compiled in process it works
+       We can now create extern "C" C++ code, attach it to our process, and call it from Kaleidoscope
+        
+ ************** Tutorial #5: Control Flow
+ Implementing if/else...
+    Phi operation: remember which block execution came from
+       %iftmp = phi double [ %calltmp, %then ], [ %calltmp1, %else ]
+       %iftmp becomes %calltmp if execution came from %then, or %calltmp1 if it came from %else
+ 
+    CondV = Builder.CreateFCmpONE(CondV, ConstantFP::get(TheContext, APFloat(0.0)), "ifcond");
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();  // Get function block->getfunction (parent)
+    BasicBlock *ThenBB  = BasicBlock::Create(TheContext, "then", TheFunction);
+    BasicBlock *ElseBB  = BasicBlock::Create(TheContext, "else");
+    BasicBlock *MergeBB = BasicBlock::Create(TheContext, "ifcont");
+    Builder.CreateCondBr(CondV, ThenBB, ElseBB);
+ 
+    Builder.SetInsertPoint(ThenBB);  // Start Then branch
+    Value *ThenV = Then->codegen();
+    Builder.CreateBr(MergeBB);  // Jump to merge label
+    ThenBB = Builder.GetInsertBlock();
+    TheFunction->getBasicBlockList().push_back(ElseBB);
+
+    Builder.SetInsertPoint(ElseBB);
+    Value *ElseV = Else->codegen();
+    Builder.CreateBr(MergeBB);
+    ElseBB = Builder.GetInsertBlock();
+    TheFunction->getBasicBlockList().push_back(MergeBB);
+
+    Builder.SetInsertPoint(MergeBB);
+    // PHI specifies the variables used from which branch 'then' or 'else'
+    PHINode *PN = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, "iftmp");
+    PN->addIncoming(ThenV, ThenBB);
+    PN->addIncoming(ElseV, ElseBB);
+    return PN
+ 
+ Implementing for-loop
+    for i = 1, i < n, 1.0 in
+       putchard(42);
+ 
+    entry:
+      br label %loop
+    loop:
+      %i = phi double [ 1.000000e+00, %entry ], [ %nextvar, %loop ]
+      %calltmp = call double @putchard(double 4.200000e+01)
+      %nextvar = fadd double %i, 1.000000e+00
+      %cmptmp = fcmp ult double %i, %n
+      %booltmp = uitofp i1 %cmptmp to double
+      %loopcond = fcmp one double %booltmp, 0.000000e+00
+      br i1 %loopcond, label %loop, label %afterloop
+    afterloop:
+
+    ForExprADT:
+       std::string VarName;
+       std::unique_ptr<ExprAST> Start, End, Step, Body;
+    codegen()
+       // Values <- User <- Constant <- GlobalValue <- GlobalObject <- Function
+       Function *TheFunction = Builder.GetInsertBlock()->getParent();
+       BasicBlock *PreheaderBB = Builder.GetInsertBlock();
+       BasicBlock *LoopBB = BasicBlock::Create(TheContext, "loop", TheFunction);
+       Builder.CreateBr(LoopBB);
+       Builder.SetInsertPoint(LoopBB);
+       PHINode *Variable = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, VarName);
+       Variable->addIncoming(StartVal, PreheaderBB);
+       NamedValues[VarName] = Variable;  // Obs: Assuming VarName is not already defined (then it will be overwritten)
+       Body->codegen()
+       Value *StepVal = Step->codegen();
+       Value *NextVar = Builder.CreateFAdd(Variable, StepVal, "nextvar");
+       Value *EndCond = End->codegen();
+       EndCond = Builder.CreateFCmpONE(EndCond, ConstantFP::get(TheContext, APFloat(0.0)), "loopcond");
+       BasicBlock *LoopEndBB = Builder.GetInsertBlock();
+       BasicBlock *AfterBB = BasicBlock::Create(TheContext, "afterloop", TheFunction);
+       Builder.CreateCondBr(EndCond, LoopBB, AfterBB);
+       Builder.SetInsertPoint(AfterBB);
+       Variable->addIncoming(NextVar, LoopEndBB);
+       NamedValues.erase(VarName);
+ 
+    To visualize the control flow graph, you can use a nifty feature of the LLVM ‘opt’ tool.
+    If you put this LLVM IR into “t.ll” and run “llvm-as < t.ll | opt -analyze -view-cfg”,
+    a window will pop up and you’ll see a graph
+ 
+ ************** Tutorial #6: Extending the Language: User-defined Operators
+    Won't take notes, creates user-defined operators using
+       - PrototypeAST: E.g. member IsOperator, and Precedence)
+       - Value *BinaryExprAST::codegen(): If it's not a built-in binary operator, it's a user-defined one
+       - UnaryExprAST
+ 
+ ************** Tutorial #7: Extending the Language: Mutable Variables
+ Global variables
+    @G = weak global i32 0
+    %X.0 = load i32* @G  // SSA: @G refers to an address holding an i32
+ Stack variables
+    %X = alloca i32
+    %tmp = load i32* %X  // SSA: %X is a stack variables refers to in32*
+ 
+ *** Chapter 1
+ def fib(x)
+   if x < 3 then
+     1
+   else
+     fib(x-1)+fib(x-2)
+ fib(40)
+ 
+ extern sin(arg);
+ extern cos(arg);
+ extern atan2(arg1 arg2);
+
+ atan2(sin(.4), cos(42))
+
+ *** Chapter 2
+ ready> def foo(x y) x+foo(y, 4.0);
+ Parsed a function definition.
+ ready> def foo(x y) x+y y;
+ Parsed a function definition.
+ Parsed a top-level expr
+ ready> def foo(x y) x+y );
+ Parsed a function definition.
+ Error: unknown token when expecting an expression
+ ready> extern sin(a);
+ ready> Parsed an extern
+ 
+ *** Chapter 3
+ ready> 4+5;
+ ready> def foo(a b) a*a + 2*a*b + b*b;
+ ready> def bar(a) foo(a, 4.0) + bar(31337);
+ ready> extern cos(x);
+ ready> ^D  // Emits all IR code
+ 
+ *** Chapter 4
+ ready> def test(x) 1+2+x;
+ ready> def test(x) 1+2+x;
+ ready> def test(x) (1+2+x)*(x+(1+2));
+ ready> 4+5;
+ ready> def testfunc(x y) x + y*2;
+ ready> testfunc(4, 10);
+ ready> extern sin(x);
+ ready> sin(1.0);
+ ready> def foo(x) sin(x)*sin(x) + cos(x)*cos(x);
+ ****************** Optimizations
+   - Compiler implementor has flexibility to decide which are applied
+   - Optimization are done in multiple passes in LLVM
+   - Can operate on entire modules or functions, etc. Docs: "How to write a pass", "Predefined Passes"
+   - You can see passes Clang runs, 'opt' tool allows you to experiment with passes
+   Concrete ones
+    - Constant Folding: const op const can be converted to the result
+    - Reassociation of Expression: tmp1=x+3, tmp2=3+x, rvalue is the same, this detects that
+    - Common Subexpression Elimination: Eliminate one after RoE above
+    
  */
 
 
