@@ -808,7 +808,7 @@ Function *FunctionAST::codegen() {
     verifyFunction(*TheFunction);
 
     // Run the optimizer on the function.
-    TheFPM->run(*TheFunction);
+    // TheFPM->run(*TheFunction);
 
     return TheFunction;
   }
@@ -948,6 +948,7 @@ extern "C" DLLEXPORT double printd(double X) {
 //===----------------------------------------------------------------------===//
 
 int main() {
+  printf("This is toy chapter 05\n");
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
   InitializeNativeTargetAsmParser();
