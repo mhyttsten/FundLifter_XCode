@@ -1,4 +1,131 @@
-#include "../include/KaleidoscopeJIT.h"
+// *** JIT ***: ONLY NEEDED IF YOU WANT JIT EXECUTION
+//===----------------------------------------------------------------------===//
+// Copy of file: Kaleidoscope/include/KaleidoscopeJIT.h
+// Contains a simple JIT definition for use in the kaleidoscope tutorials.
+// No need to understand class KaleidoscopeJIT to understand LLVM basics below
+//===----------------------------------------------------------------------===//
+#ifndef LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+#define LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/iterator_range.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/JITSymbol.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/LambdaResolver.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/Mangler.h"
+#include "llvm/Support/DynamicLibrary.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+namespace llvm {
+namespace orc {
+class KaleidoscopeJIT {
+public:
+  using ObjLayerT = LegacyRTDyldObjectLinkingLayer;
+  using CompileLayerT = LegacyIRCompileLayer<ObjLayerT, SimpleCompiler>;
+
+  KaleidoscopeJIT()
+      : Resolver(createLegacyLookupResolver(
+            ES,
+            [this](const std::string &Name) { return findMangledSymbol(Name); },
+            [](Error Err) { cantFail(std::move(Err), "lookupFlags failed"); })),
+        TM(EngineBuilder().selectTarget()), DL(TM->createDataLayout()),
+        ObjectLayer(AcknowledgeORCv1Deprecation, ES,
+                    [this](VModuleKey) {
+                      return ObjLayerT::Resources{
+                          std::make_shared<SectionMemoryManager>(), Resolver};
+                    }),
+        CompileLayer(AcknowledgeORCv1Deprecation, ObjectLayer,
+                     SimpleCompiler(*TM)) {
+    llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+  }
+
+  TargetMachine &getTargetMachine() { return *TM; }
+
+  VModuleKey addModule(std::unique_ptr<Module> M) {
+    auto K = ES.allocateVModule();
+    cantFail(CompileLayer.addModule(K, std::move(M)));
+    ModuleKeys.push_back(K);
+    return K;
+  }
+
+  void removeModule(VModuleKey K) {
+    ModuleKeys.erase(find(ModuleKeys, K));
+    cantFail(CompileLayer.removeModule(K));
+  }
+
+  JITSymbol findSymbol(const std::string Name) {
+    return findMangledSymbol(mangle(Name));
+  }
+
+private:
+  std::string mangle(const std::string &Name) {
+    std::string MangledName;
+    {
+      raw_string_ostream MangledNameStream(MangledName);
+      Mangler::getNameWithPrefix(MangledNameStream, Name, DL);
+    }
+    return MangledName;
+  }
+  
+  JITSymbol findMangledSymbol(const std::string &Name) {
+#ifdef _WIN32
+    // The symbol lookup of ObjectLinkingLayer uses the SymbolRef::SF_Exported
+    // flag to decide whether a symbol will be visible or not, when we call
+    // IRCompileLayer::findSymbolIn with ExportedSymbolsOnly set to true.
+    //
+    // But for Windows COFF objects, this flag is currently never set.
+    // For a potential solution see: https://reviews.llvm.org/rL258665
+    // For now, we allow non-exported symbols on Windows as a workaround.
+    const bool ExportedSymbolsOnly = false;
+#else
+    const bool ExportedSymbolsOnly = true;
+#endif
+    // Search modules in reverse order: from last added to first added.
+    // This is the opposite of the usual search order for dlsym, but makes more
+    // sense in a REPL where we want to bind to the newest available definition.
+    for (auto H : make_range(ModuleKeys.rbegin(), ModuleKeys.rend()))
+      if (auto Sym = CompileLayer.findSymbolIn(H, Name, ExportedSymbolsOnly))
+        return Sym;
+    // If we can't find the symbol in the JIT, try looking in the host process.
+    if (auto SymAddr = RTDyldMemoryManager::getSymbolAddressInProcess(Name))
+      return JITSymbol(SymAddr, JITSymbolFlags::Exported);
+#ifdef _WIN32
+    // For Windows retry without "_" at beginning, as RTDyldMemoryManager uses
+    // GetProcAddress and standard libraries like msvcrt.dll use names
+    // with and without "_" (for example "_itoa" but "sin").
+    if (Name.length() > 2 && Name[0] == '_')
+      if (auto SymAddr =
+              RTDyldMemoryManager::getSymbolAddressInProcess(Name.substr(1)))
+        return JITSymbol(SymAddr, JITSymbolFlags::Exported);
+#endif
+    return nullptr;
+  }
+
+  ExecutionSession ES;
+  std::shared_ptr<SymbolResolver> Resolver;
+  std::unique_ptr<TargetMachine> TM;
+  const DataLayout DL;
+  ObjLayerT ObjectLayer;
+  CompileLayerT CompileLayer;
+  std::vector<VModuleKey> ModuleKeys;
+};
+} // end namespace orc
+} // end namespace llvm
+#endif // LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+
+//===----------------------------------------------------------------------===//
+// Starting the LLVM tutorial code
+//===----------------------------------------------------------------------===//
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -13,7 +140,10 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -24,8 +154,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
+#include <stdio.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,32 +166,25 @@
 using namespace llvm;
 using namespace llvm::orc;
 
-static LLVMContext TheContext;
-static IRBuilder<> Builder(TheContext);
-static std::unique_ptr<Module> TheModule;
-static std::map<std::string, Value *> NamedValues;
-static std::unique_ptr<legacy::FunctionPassManager> TheFPM;
-static std::unique_ptr<KaleidoscopeJIT> TheJIT;
-
 // Create this function that we can call from our machine generated code
 extern "C" double putchard(double X) {
   printf("%c\n", (char)X);
-//  fputc((char)X, stdout);
   return 0.0;
 }
 
+static LLVMContext TheContext;
+static IRBuilder<> Builder(TheContext);
+ // Code gets generated into TheModule
+static std::unique_ptr<Module> TheModule = std::make_unique<Module>("My Cool Module", TheContext);
+static std::unique_ptr<legacy::FunctionPassManager> TheFPM;
+
+// For JIT generation
+static std::unique_ptr<KaleidoscopeJIT> TheJIT;
+// For Object file generation (see description below)
+TargetMachine *TargetMachine = nullptr;
+
 int main() {
   printf("Starting\n");
-  InitializeNativeTarget();
-  InitializeNativeTargetAsmPrinter();
-  InitializeNativeTargetAsmParser();
-  
-  // Initialize structures
-  //    Code gets geneated into 'TheModule'
-  //    TheJIT enables code to run within same process space
-  TheJIT = std::make_unique<KaleidoscopeJIT>();
-  TheModule = std::make_unique<Module>("my cool jit", TheContext);
-  TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
   
   // Initialize the optimizer (using TheFPM is optional)
   TheFPM = std::make_unique<legacy::FunctionPassManager>(TheModule.get());
@@ -84,7 +210,7 @@ int main() {
   // Define a function __foo
   std::vector<Type *> Doubles(1, Type::getDoubleTy(TheContext));  // 1 == 1 argument
   FunctionType *FT_1DParam_1DReturn = FunctionType::get(Type::getDoubleTy(TheContext), Doubles, false);
-  const std::string FNfoo = "__foo";
+  const std::string FNfoo = "foo";
   Function *Ffoo = Function::Create(FT_1DParam_1DReturn, Function::ExternalLinkage, FNfoo, TheModule.get());
   BasicBlock *BBfoo = BasicBlock::Create(TheContext, "entry", Ffoo);
   Builder.SetInsertPoint(BBfoo);
@@ -111,7 +237,10 @@ int main() {
   RetVal = Builder.CreateFAdd(Vcallbar, RetVal, "addtmp");
 
   // *** Chapter 05
-  
+  // Visualize control flow graph, options:
+  //   1. llvm-as < t.ll | opt -analyze -view-cfg  # LLVM IR in t.ll
+  //   2. F->viewCFG()” or “F->viewCFGOnly()  # Add to code or call in debugger
+
   // **** if-statement
   // Let's do an if statement: if param0 > 1.0 then RetVal += 1 else RetVal += 2
   BasicBlock *ThenBB =  BasicBlock::Create(TheContext, "then", Ffoo);  // Attach now to Function
@@ -185,16 +314,13 @@ int main() {
   Builder.SetInsertPoint(AfterBB);
   // **** end of for-statement
   
-  // *** Chapter 06
-  // User-defied operators
+  // *** Chapter 06 - User-defied operators
   // Why would you allow this in a language?
   //    For a language designer, it allows you to define many parts of the language in the library
   //    E.g. if we have <= and !
   //       Then we can create user-define operator for '>'  as '!<='
 
-  // *** Chapter 07
-  // Mutable variables
-  
+  // *** Chapter 07 - Mutable variables
   // Create IRBuilder object pointing at first instruction of the entry block
   //    ('entry' label block is first block always inserted implicitly into functions)
   IRBuilder<> TmpB(&Ffoo->getEntryBlock(), Ffoo->getEntryBlock().begin());
@@ -211,13 +337,7 @@ int main() {
   ArgsVputchard.clear();
   ArgsVputchard.push_back(Vloada);
   Vcallputchard = Builder.CreateCall(Fputchard, ArgsVputchard, "callputchard_9.99");
-  
-  // *** Chapter 08
-  // Object Files
-  
 
-  
-  
   // Return result
   Builder.CreateRet(RetVal);
   verifyFunction(*Ffoo);  // Validates IR code
@@ -226,19 +346,110 @@ int main() {
   // Print generated LLVM IR code
   printf("\nCode Generated for __bar");
   Fbar->print(errs());
-  printf("\nCode Generated for __foo");
+  printf("\nCode Generated for foo");
   Ffoo->print(errs());
   
-  // JIT and execute generated code, then remove it from our process space
-  auto H = TheJIT->addModule(std::move(TheModule));  // Code cannot be added to TheModule after this
-  auto ExprSymbol = TheJIT->findSymbol(FNfoo);
-  assert(ExprSymbol && "Function not found");
-  double (*FP)(double) = (double (*)(double))(intptr_t)cantFail(ExprSymbol.getAddress());
-  printf("Executed __foo(3.14), result: %f\n", FP(3.14));
-  printf("Executed __foo(0.99), result: %f\n", FP(0.99));
-  printf("Executed __foo(1.00), result: %f\n", FP(1.00));
-  printf("Executed __foo(1.01), result: %f\n", FP(1.01));
-  TheJIT->removeModule(H);  // Delete function from JIT space
+  //*******************
+  // Done with code generation, now let's executing it on JIT or create Object file
+  
+  // If true, generate & execute machine code directly into our process space (chapter 4)
+  // If false, we write an object file (chapter 8)
+  bool isJIT = true;
+//  bool isJIT = false;
+
+  // Initialization for JIT execution (generate and execute from within our process space)
+  if (isJIT) {
+    // Native targets
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    InitializeNativeTargetAsmParser();
+    
+    // TheJIT enables code to run within same process space
+    TheJIT = std::make_unique<KaleidoscopeJIT>();
+    TheModule->setDataLayout(TheJIT->getTargetMachine().createDataLayout());
+
+    // JIT and execute generated code, then remove it from our process space
+    auto H = TheJIT->addModule(std::move(TheModule));  // Code cannot be added to TheModule after this
+    auto ExprSymbol = TheJIT->findSymbol(FNfoo);
+    assert(ExprSymbol && "Function not found");
+    double (*FP)(double) = (double (*)(double))(intptr_t)cantFail(ExprSymbol.getAddress());
+    printf("Executed foo(3.14), result: %f\n", FP(3.14));
+    printf("Executed foo(0.99), result: %f\n", FP(0.99));
+    printf("Executed foo(1.00), result: %f\n", FP(1.00));
+    printf("Executed foo(1.01), result: %f\n", FP(1.01));
+    TheJIT->removeModule(H);  // Delete function from JIT space
+  }
+  
+  // Initialization for Object file generation
+  else {
+    // Initialize all targets (not needed unless you want all of them))
+    InitializeAllTargetInfos();
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
+
+    // Target triple: <arch><sub>-<vendor>-<sys>-<abi>, see http://clang.llvm.org/docs/CrossCompilation.html#target-triple
+    // See what clang thinks our target is: $ clang --version | grep Target
+    auto TargetTriple = sys::getDefaultTargetTriple();
+    std::string Error;
+    // Holds target specific information
+    // Generated from a target triple: <arch><sub>-<vendor>-<sys>-<abi>
+    auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+
+    // TargetMachine = Machine description of the machine we’re targeting
+    // Also specifies features (e.g. SSE) or a specific CPU (e.g. Sandylake)
+    // To see which features and CPUs that LLVM knows about, e.g. for X86:
+    //   $ llvm-as < /dev/null | llc -march=x86 -mattr=help
+    // Just use boilerplate CPU without any features
+    auto CPU = "generic";
+    auto Features = "";
+    TargetOptions opt;
+    auto RM = Optional<Reloc::Model>();
+    auto TheTargetMachine = Target->createTargetMachine(TargetTriple, CPU, Features, opt, RM);
+
+    TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+    TheModule->setTargetTriple(TargetTriple);
+    
+    auto Filename = "/tmp/llvm_foo.o";
+    std::error_code EC;
+    raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+    if (EC) {
+      errs() << "Could not open file: " << EC.message();
+      return 1;
+    }
+
+    legacy::PassManager pass;
+    auto FileType = llvm::TargetMachine::CGFT_ObjectFile;
+    if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+      errs() << "TheTargetMachine can't emit a file of this type";
+      return 1;
+    }
+    pass.run(*TheModule);
+    dest.flush();
+    outs() << "Wrote " << Filename << "\n";
+    
+    std::string main_src = " \
+      // Compile and run: $ clang++ llvm_main.cpp llvm_foo.o -o llvm_main\n \
+      #include <iostream>\n \
+      extern \"C\" { double foo(double); }\n \
+      int main() {\n \
+        printf(\"Executed foo(3.14), result: %f\\n\", foo(3.14));\n \
+        printf(\"Executed foo(0.99), result: %f\\n\", foo(0.99));\n \
+        printf(\"Executed foo(1.00), result: %f\\n\", foo(1.00));\n \
+        printf(\"Executed foo(1.01), result: %f\\n\", foo(1.01));\n \
+      }\n \
+      // Need to have this as our generated llvm_foo.o calls it\n \
+      extern \"C\" double putchard(double X) {\n \
+         printf(\"%c\\n\", (char)X);\n \
+         return 0.0;\n \
+      }\n \
+    ";
+    std::ofstream main_src_os("/tmp/llvm_main.cpp");
+    main_src_os << main_src;
+    main_src_os.close();
+    outs() << "Wrote /tmp/llvm_main.cpp\n";
+  }
   
   return 0;
 }
@@ -250,6 +461,7 @@ int main() {
 //       br label %cond_next
 
 /*
+ From Chapter 7
  LLVM does require all register values to be in SSA form, it does not require (or permit) memory objects to be in SSA form
  Some compilers try to version memory objects (SSA)
     LLVM does not do this in IR, but rather in Analysis Phases: https://llvm.org/docs/WritingAnLLVMPass.html
@@ -277,18 +489,12 @@ int main() {
        return X;
     }
  Managing symbol tables in LLVM: NamedValues map
- Before we used stack variabels: static std::map<std::string, Value*> NamedValues;
- Whith stack variables:          static std::map<std::string, AllocaInst*> NamedValues;
+ Before we used SSA values: static std::map<std::string, Value*> NamedValues;
+ With stack variables:      static std::map<std::string, AllocaInst*> NamedValues;
  
-
  TODO: LLVM debugging - https://llvm.org/docs/SourceLevelDebugging.html
- 
  
  */
 
-
-// Visualize control flow graph, options:
-//   1. llvm-as < t.ll | opt -analyze -view-cfg  # LLVM IR in t.ll
-//   2. F->viewCFG()” or “F->viewCFGOnly()  # Add to code or call in debugger
 
 
