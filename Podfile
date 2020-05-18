@@ -8,9 +8,10 @@ target 'FundLifter' do
   use_modular_headers!
   
   # Pods for FundLifter
-#  pod 'Firebase/Analytics'
+  pod 'Firebase/Analytics'
 #  pod 'Firebase/Firestore'
   pod 'Firebase/Storage'
+  pod 'Firebase/Crashlytics'
   pod 'Zip'
 
   target 'FundLifterTests' do

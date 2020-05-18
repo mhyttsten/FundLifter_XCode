@@ -12,13 +12,23 @@ import BackgroundTasks
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
+  
 
   let appRefreshTask = "com.pf.fundlifter.appRefreshTask"  // max 30s    BG,FB,idle,BG,FG,idle,...,charging
   let backgroundTask = "com.pf.fundlifter.backgroundTask"  // minutes ok
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     FirebaseApp.configure()
-//    Analytics.setAnalyticsCollectionEnabled(false)
+    Analytics.setAnalyticsCollectionEnabled(true)
     print("FirebaseApp.configure has been called")
+    
+    Crashlytics.crashlytics().setCustomValue("This is Magnus Value", forKey: "For Magnus Key")
+    Crashlytics.crashlytics().log("This is Magnus custom .log message")
+    Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+    Crashlytics.crashlytics().checkForUnsentReports { print("Are there unsent reports: \($0)") }
+    Crashlytics.crashlytics().sendUnsentReports()
+//    assert(false);
+//    var i = [1, 2, 3]
+//    print("Here we print i: \(i[3])")
     
     logFileAppend(s: "Ent application(dFWLO)")
     print("Logfile path: \(logFilePath)")
