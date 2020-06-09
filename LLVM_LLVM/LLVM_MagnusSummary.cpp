@@ -420,7 +420,8 @@ int main() {
     }
 
     legacy::PassManager pass;
-    auto FileType = llvm::TargetMachine::CGFT_ObjectFile;
+//    auto FileType = llvm::TargetMachine::CGFT_ObjectFile;
+    auto FileType = CGFT_ObjectFile;
     if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
       errs() << "TheTargetMachine can't emit a file of this type";
       return 1;
