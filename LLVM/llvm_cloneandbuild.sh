@@ -2,13 +2,20 @@
 #    https://llvm.org/docs/CMake.html
 #    https://mlir.llvm.org/getting_started
 
-# OBS: Building lldb target of LLVM does not work with stand-alone command-line tools installed
-#    Only X-code installed command-line tools must be used
-
+# OBS
+#   1. Building lldb target of LLVM does not work with stand-alone command-line tools installed,
+#      only X-code installed command-line tools must be used (so need to remove
+#      /Library/Developer/CommandLineTools). If not you get compile errors from cmath
+#   2. -DLLVM_ENABLE_RTTI=ON \ must be specified (and resulting llvm-config --has-rtti needs
+#      to return YES). If not, you get undefined symbol at link time on SymbolResolver)
+#
 # All available targets
 #   -DLLVM_ENABLE_PROJECTS="clang;libcxx;libcxxabi;lldb;clang-tools-extra;libunwind;compiler-rt;lld;mlir;debuginfo-tests;polly" \
 # Alternative platforms
 #   -DLLVM_TARGETS_TO_BUILD="X86;NVPTX;AMDGPU" \
+# Installs /usr/local/examples (I think)
+#   -DLLVM_BUILD_EXAMPLES=ON \
+# CMake options available here: https://llvm.org/docs/CMake.html
 
 # brew install cmake
 # brew install ninja
@@ -21,7 +28,8 @@ tar xvf llvm-project-r10-fromgithub.tar  # If we already have a tar ball of GitH
 mkdir llvm-project/build
 cd llvm-project/build
 cmake -G Ninja ../llvm \
-      -DLLVM_ENABLE_PROJECTS="clang;libcxx;libcxxabi;lldb;clang-tools-extra;libunwind;compiler-rt;lld;mlir;debuginfo-tests;polly"
+      -DLLVM_ENABLE_RTTI=ON \
+      -DLLVM_ENABLE_PROJECTS="clang;libcxx;libcxxabi;lldb;clang-tools-extra;libunwind;compiler-rt;lld;mlir;debuginfo-tests;polly" \
       -DLLVM_BUILD_EXAMPLES=ON \
       -DLLVM_TARGETS_TO_BUILD="X86" \
       -DCMAKE_BUILD_TYPE=Release \
