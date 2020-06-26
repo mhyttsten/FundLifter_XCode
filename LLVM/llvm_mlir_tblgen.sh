@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# set -o xtrace  # This prints all commands
+echo "" 
+
 if [ $# -ne 3 ]
   then
     echo "Usage: <source_file.td> <target_dir/file> [-gen-op-decls|-gen-op-defs]"
@@ -8,7 +11,7 @@ if [ $# -ne 3 ]
 fi
 
 
-echo "Entering with arguments 1: $1, 2: $2, 3: $3"
+# echo "Entering with arguments 1: $1, 2: $2, 3: $3"
 
 if [[ ! $1 =~ \.td$ ]]
 then
@@ -19,6 +22,15 @@ fi
 if [ $3 == "-gen-op-decls" ]
 then
    suffix=".h"
+elif [ $3 == "-gen-op-defs" ]
+then
+   suffix=".cpp"
+elif [ $3 == "-gen-op-interface-decls" ]
+then
+   suffix=".h"
+elif [ $3 == "-gen-op-interface-defs" ]
+then
+   suffix=".cpp"
 elif [ $3 == "-gen-op-defs" ]
 then
    suffix=".cpp"
@@ -34,14 +46,18 @@ fi
 target_file="build/$2$suffix.inc"
 target_file_d="$target_file.d"
 target_dir=$(dirname $target_file)
-echo "Creating directory: $target_dir"
+[ ! -d $target_dir ] && echo "Creating directory: $target_dir"
 mkdir -p $target_dir
 
-mlir-tblgen \
-   -gen-op-interface-decls \
+CMD="mlir-tblgen \
+   $3 \
    -I/usr/local/include \
    -Iinclude \
    $1 \
    --write-if-changed \
    -o ${target_file} \
-   -d ${target_file_d}
+   -d ${target_file_d}"
+echo $CMD
+$CMD
+
+   

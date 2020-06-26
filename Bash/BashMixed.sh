@@ -16,6 +16,9 @@
 echo $1
 # mkdir -p build  # Don't fail if exists, also created recursively if multiple paths
 
+# Create directory if it doesn't exist
+[ ! -d $target_dir ] && echo "Creating directory: $target_dir"
+
 test_file="include/testing/include/Hello.td"
 target_file=${1%.td}  # Remove TD suffix
 echo $target_file

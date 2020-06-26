@@ -3,8 +3,8 @@ SHPATH=/Users/magnushyttsten/xcode/FundLifter/LLVM
 $SHPATH/llvm_mlir_tblgen.sh mlir/ToyCombine.td ToyCombine -gen-rewriters
 $SHPATH/llvm_mlir_tblgen.sh include/toy/Ops.td toy/Ops -gen-op-decls
 $SHPATH/llvm_mlir_tblgen.sh include/toy/Ops.td toy/Ops -gen-op-defs
-$SHPATH/llvm_mlir_tblgen.sh include/toy/ShapeInferenceInterface.td toy/ShapeInferenceOpInterfaces -gen-op-decls
-$SHPATH/llvm_mlir_tblgen.sh include/toy/ShapeInferenceInterface.td toy/ShapeInferenceOpInterfaces -gen-op-defs
+$SHPATH/llvm_mlir_tblgen.sh include/toy/ShapeInferenceInterface.td toy/ShapeInferenceOpInterfaces -gen-op-interface-decls
+$SHPATH/llvm_mlir_tblgen.sh include/toy/ShapeInferenceInterface.td toy/ShapeInferenceOpInterfaces -gen-op-interface-defs
 $SHPATH/llvm_mlir_compile.sh parser/AST.cpp
 $SHPATH/llvm_mlir_compile.sh mlir/DeadFunctionEliminationPass.cpp
 $SHPATH/llvm_mlir_compile.sh mlir/ToyCombine.cpp
@@ -15,7 +15,7 @@ $SHPATH/llvm_mlir_compile.sh mlir/LowerToAffineLoops.cpp
 $SHPATH/llvm_mlir_compile.sh mlir/Dialect.cpp
 $SHPATH/llvm_mlir_compile.sh toyc.cpp
 
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ \
+CMD="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ \
    -fPIC -fvisibility-inlines-hidden -Werror=date-time -Werror=unguarded-availability-new \
    -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wmissing-field-initializers \
    -pedantic -Wno-long-long -Wimplicit-fallthrough -Wcovered-switch-default -Wno-noexcept-type \
@@ -113,5 +113,9 @@ $SHPATH/llvm_mlir_compile.sh toyc.cpp
    -lz \
    -lcurses \
    -lm \
-   -lLLVMDemangle
+   -lLLVMDemangle"
+echo ""
+echo $CMD
+$CMD
+
 

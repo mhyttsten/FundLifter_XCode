@@ -6,10 +6,11 @@ if [ $# -eq 0 ]
     exit 1
 fi
 
-echo $1
+echo ""
+[ ! -d "build" ] && echo "Creating directory: build"
 mkdir -p build
 
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ \
+CMD="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ \
    -DBUILD_EXAMPLES -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS \
    -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/usr/include/libxml2 \
    -Iinclude \
@@ -23,5 +24,8 @@ mkdir -p build
    -UNDEBUG -fno-exceptions -std=c++14 \
    -MD -MT build/$(basename $1).o -MF build/$(basename $1).o.d \
    -o build/$(basename $1).o \
-   -c $1
+   -c $1"
+echo $CMD
+$CMD
+
    
