@@ -43,7 +43,7 @@ else
 fi
 
 
-target_file="build/$2$suffix.inc"
+target_file="/tmp/build_tmp/$2$suffix.inc"
 target_file_d="$target_file.d"
 target_dir=$(dirname $target_file)
 [ ! -d $target_dir ] && echo "Creating directory: $target_dir"

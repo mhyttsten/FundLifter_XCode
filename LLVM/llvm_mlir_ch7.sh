@@ -26,16 +26,16 @@ CMD="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolch
    -Wl,-force_load /usr/local/lib/libMLIRAffineOps.a \
    -Wl,-force_load /usr/local/lib/libMLIRLLVMIR.a \
    -Wl,-force_load /usr/local/lib/libMLIRStandardOps.a \
-   build/toyc.cpp.o \
-   build/AST.cpp.o \
-   build/MLIRGen.cpp.o \
-   build/Dialect.cpp.o \
-   build//DeadFunctionEliminationPass.cpp.o \
-   build/LowerToAffineLoops.cpp.o \
-   build/LowerToLLVM.cpp.o \
-   build/ShapeInferencePass.cpp.o \
-   build/ToyCombine.cpp.o \
-   -o build/toyc-ch7 \
+   /tmp/build_tmp/toyc.cpp.o \
+   /tmp/build_tmp/AST.cpp.o \
+   /tmp/build_tmp/MLIRGen.cpp.o \
+   /tmp/build_tmp/Dialect.cpp.o \
+   /tmp/build_tmp/DeadFunctionEliminationPass.cpp.o \
+   /tmp/build_tmp/LowerToAffineLoops.cpp.o \
+   /tmp/build_tmp/LowerToLLVM.cpp.o \
+   /tmp/build_tmp/ShapeInferencePass.cpp.o \
+   /tmp/build_tmp/ToyCombine.cpp.o \
+   -o /tmp/build_tmp/toyc-ch7 \
    -Wl,-rpath,@loader_path/../lib \
    -L/usr/local/lib \
    -lLLVMCore \
