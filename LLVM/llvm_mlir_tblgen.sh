@@ -60,4 +60,3 @@ CMD="mlir-tblgen \
 echo $CMD
 $CMD
 
-   

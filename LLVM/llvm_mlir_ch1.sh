@@ -1,0 +1,102 @@
+SHPATH=/Users/magnushyttsten/xcode/FundLifter/LLVM
+
+$SHPATH/llvm_mlir_compile.sh parser/AST.cpp
+$SHPATH/llvm_mlir_compile.sh toyc.cpp
+
+CMD="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++ \
+   -fPIC -fvisibility-inlines-hidden -Werror=date-time -Werror=unguarded-availability-new \
+   -Wall -Wextra -Wno-unused-parameter -Wwrite-strings -Wcast-qual -Wmissing-field-initializers \
+   -pedantic -Wno-long-long -Wimplicit-fallthrough -Wcovered-switch-default -Wno-noexcept-type \
+   -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wstring-conversion -fdiagnostics-color -O3 \
+   -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk \
+   -Wl,-search_paths_first -Wl,-headerpad_max_install_names \
+   -Wl,-force_load /usr/local/lib/libMLIRAffineToStandard.a \
+   -Wl,-force_load /usr/local/lib/libMLIRAffineOps.a \
+   -Wl,-force_load /usr/local/lib/libMLIRLLVMIR.a \
+   -Wl,-force_load /usr/local/lib/libMLIRStandardOps.a \
+   /tmp/build_tmp/toyc.cpp.o \
+   /tmp/build_tmp/AST.cpp.o \
+   -o /tmp/build_tmp/toyc-ch7 \
+   -Wl,-rpath,@loader_path/../lib \
+   -L/usr/local/lib \
+   -lLLVMCore \
+   -lLLVMSupport \
+   -lMLIRAffineOps \
+   -lMLIRAffineToStandard \
+   -lMLIRAnalysis \
+   -lMLIRExecutionEngine \
+   -lMLIRIR \
+   -lMLIRLLVMIR \
+   -lMLIRLoopToStandard \
+   -lMLIRParser \
+   -lMLIRPass \
+   -lMLIRStandardOps \
+   -lMLIRStandardToLLVM \
+   -lMLIRTargetLLVMIR \
+   -lMLIRTransforms \
+   -lMLIRTargetLLVMIRModuleTranslation \
+   -lMLIRTranslation \
+   -lLLVMOrcJIT \
+   -lLLVMExecutionEngine \
+   -lLLVMRuntimeDyld \
+   -lLLVMJITLink \
+   -lLLVMOrcError \
+   -lLLVMPasses \
+   -lLLVMX86CodeGen \
+   -lLLVMAsmPrinter \
+   -lLLVMDebugInfoDWARF \
+   -lLLVMCFGuard \
+   -lLLVMGlobalISel \
+   -lLLVMSelectionDAG \
+   -lLLVMCodeGen \
+   -lLLVMTarget \
+   -lLLVMX86Desc \
+   -lLLVMX86Utils \
+   -lLLVMMCDisassembler \
+   -lLLVMX86Info \
+   -lLLVMipo \
+   -lLLVMBitWriter \
+   -lLLVMIRReader \
+   -lLLVMInstrumentation \
+   -lLLVMLinker \
+   -lLLVMScalarOpts \
+   -lLLVMAggressiveInstCombine \
+   -lLLVMInstCombine \
+   -lLLVMVectorize \
+   -lLLVMTransformUtils \
+   -lLLVMAnalysis \
+   -lLLVMObject \
+   -lLLVMBitReader \
+   -lLLVMMCParser \
+   -lLLVMMC \
+   -lLLVMDebugInfoCodeView \
+   -lLLVMDebugInfoMSF \
+   -lLLVMTextAPI \
+   -lLLVMProfileData \
+   -lMLIRLLVMIR \
+   -lLLVMAsmParser \
+   -lMLIRLoopToStandard \
+   -lLLVMCore \
+   -lLLVMBinaryFormat \
+   -lLLVMRemarks \
+   -lLLVMBitstreamReader \
+   -lMLIRTransforms \
+   -lMLIRTransformUtils \
+   -lMLIRPass \
+   -lMLIRAnalysis \
+   -lMLIRAffineOps \
+   -lMLIRVectorOps \
+   -lMLIRStandardOps \
+   -lMLIRIR \
+   -lMLIRSupport \
+   -lMLIRLoopOps \
+   -lLLVMSupport \
+   -lz \
+   -lcurses \
+   -lm \
+   -lLLVMDemangle"
+echo ""
+echo $CMD
+$CMD
+
+

@@ -22,7 +22,7 @@ CMD="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolch
    -Wnon-virtual-dtor -Wdelete-non-virtual-dtor -Wstring-conversion -fdiagnostics-color -O3 \
    -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk \
    -UNDEBUG -fno-exceptions -std=c++14 \
-   -MD -MT /tmp/build_tmp/$(basename $1).o -MF build/$(basename $1).o.d \
+   -MD -MT /tmp/build_tmp/$(basename $1).o -MF /tmp/build_tmp/$(basename $1).o.d \
    -o /tmp/build_tmp/$(basename $1).o \
    -c $1"
 echo $CMD

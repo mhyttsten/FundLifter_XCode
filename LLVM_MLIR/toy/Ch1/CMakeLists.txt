@@ -1,12 +1,16 @@
-set(LLVM_LINK_COMPONENTS
-  Support
-  )
+message(STATUS "Ch1, src: ${CMAKE_CURRENT_SOURCE_DIR}, bin: ${CMAKE_CURRENT_BINARY_DIR}")
 
-add_toy_chapter(toyc-ch1
+set(SUBPROJECT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+include_directories(include/)
+
+add_executable(toyc-ch1
   toyc.cpp
   parser/AST.cpp
   )
-include_directories(include/)
-target_link_libraries(toyc-ch1
-  PRIVATE
-    MLIRSupport)
+
+target_link_libraries(toyc-ch1 PRIVATE
+  MLIRSupport
+  LLVMSupport
+  LLVMDemangle
+  curses)

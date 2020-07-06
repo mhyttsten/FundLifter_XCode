@@ -1,14 +1,14 @@
+message(STATUS "Ch4, src: ${CMAKE_CURRENT_SOURCE_DIR}, bin: ${CMAKE_CURRENT_BINARY_DIR}")
+
+set(SUBPROJECT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_subdirectory(include)
 
-set(LLVM_LINK_COMPONENTS
-  Support
-  )
+mlir_tablegen(${SUBPROJECT_SRC_DIR} -gen-rewriters mlir/ToyCombine.td ToyCombine.inc)
 
-set(LLVM_TARGET_DEFINITIONS mlir/ToyCombine.td)
-mlir_tablegen(ToyCombine.inc -gen-rewriters "-I${CMAKE_CURRENT_SOURCE_DIR}/include")
-add_public_tablegen_target(ToyCh4CombineIncGen)
+add_custom_target(ch4_generate_tabledefs ALL DEPENDS ToyCombine.inc)
 
-add_toy_chapter(toyc-ch4
+add_executable(toyc-ch4
   toyc.cpp
   parser/AST.cpp
   mlir/MLIRGen.cpp
@@ -16,20 +16,15 @@ add_toy_chapter(toyc-ch4
   mlir/DeadFunctionEliminationPass.cpp
   mlir/ShapeInferencePass.cpp
   mlir/ToyCombine.cpp
-  )
+)
 
-add_dependencies(toyc-ch4 ToyCh4OpsIncGen)
-add_dependencies(toyc-ch4 ToyCh4ShapeInferenceInterfaceIncGen)
-add_dependencies(toyc-ch4 ToyCh4CombineIncGen)
-add_dependencies(toyc-ch4 MLIRCallOpInterfacesIncGen)
-include_directories(include/)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/)
-target_link_libraries(toyc-ch4
-  PRIVATE
-    MLIRAnalysis
-    MLIRIR
-    MLIRParser
-    MLIRPass
-    MLIRTransforms)
+add_dependencies(toyc-ch4 ch4_generate_include_tabledefs ch4_generate_tabledefs)
+
+target_include_directories(toyc-ch4
+ PRIVATE
+   include/  # This includes ${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_CURRENT_BINARY_DIR}/include
+   ${CMAKE_CURRENT_BINARY_DIR})
+
+target_link_libraries(toyc-ch4 PRIVATE ${MLIR_ALLLIBS})
 

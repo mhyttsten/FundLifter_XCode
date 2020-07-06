@@ -1,21 +1,23 @@
+message(STATUS "Ch2, src: ${CMAKE_CURRENT_SOURCE_DIR}, bin: ${CMAKE_CURRENT_BINARY_DIR}")
+
+set(SUBPROJECT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_subdirectory(include)
 
-set(LLVM_LINK_COMPONENTS
-  Support
-  )
-
-add_toy_chapter(toyc-ch2
+add_executable(toyc-ch2
   toyc.cpp
   parser/AST.cpp
   mlir/MLIRGen.cpp
   mlir/Dialect.cpp
   )
-include_directories(include/)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/)
-add_dependencies(toyc-ch2 ToyCh2OpsIncGen)
+
+add_dependencies(toyc-ch2 generate_tabledefs)
+
+target_include_directories(toyc-ch2
+ PRIVATE
+   include/  # This includes ${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_CURRENT_BINARY_DIR}/include)
+   
 target_link_libraries(toyc-ch2
   PRIVATE
-    MLIRAnalysis
-    MLIRIR
-    MLIRParser
-    MLIRTransforms)
+    ${MLIR_ALLLIBS})
