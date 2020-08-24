@@ -1,3 +1,6 @@
+# Create and cd to build directory (from within toy), then execute
+#   cd ..; rm -rf build; mkdir build; cd build; cmake -G Ninja ..; cmake --build .
+
 cmake_minimum_required(VERSION 3.17)
 message(STATUS "Top, src: ${CMAKE_CURRENT_SOURCE_DIR}, bin: ${CMAKE_CURRENT_BINARY_DIR}")
 

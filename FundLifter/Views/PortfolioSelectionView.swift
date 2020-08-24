@@ -50,7 +50,7 @@ struct PortfolioSelectionView: View {
         }
         
         let data = portfolioEncode()
-        CoreIO.gcsWrite(targetFile: FLConstants.PORTFOLIO_FILENAME_GCS, data: data) { metadata, error in
+        FileGCSUtils.gcsWrite(targetFile: FLConstants.PORTFOLIO_FILENAME_GCS, data: data) { metadata, error in
           if let error=error {
             print("*** Error when saving: \(error)")
           } else {

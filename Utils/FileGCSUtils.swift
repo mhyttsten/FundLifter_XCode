@@ -9,7 +9,7 @@
 import Foundation
 import Firebase
 
-public class CoreIO {
+public class FileGCSUtils {
   
   public static func gcsRead(fromFile: String, done: @escaping(Data?, Error?)->Void) {
     let storage = Storage.storage()

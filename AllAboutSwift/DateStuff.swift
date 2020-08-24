@@ -8,6 +8,12 @@
 
 import Foundation
 
+
+// Strip Minutes and Seconds
+//calendar = Calendar.current
+//let components = calendar.dateComponents([.year, .month, .day, .hour], from: date)
+//let finalDate = calendar.date(from:components)
+
 public func foo() {
   let now = Date()
   let df = DateFormatter()
@@ -24,3 +30,7 @@ public func foo() {
 }
 
 
+//  let lastIndex = prevDataFull.count < 10000 ?
+//    prevDataFull.endIndex : prevDataFull.index(prevDataFull.startIndex, offsetBy: 10000)
+//  let prevData = prevDataFull[..<lastIndex]
+  // print(logStr)

@@ -26,21 +26,30 @@ public class AppDataObservable: ObservableObject {
 
   private var isInitialized = false
   public func initialize(forceReinitialization: Bool = false) {
+    logFileAppend(s: "AppDataObservable: Initializing")
     if isInitialized && !forceReinitialization {
+      logFileAppend(s: "Initialized already returning")
       return
     }
     isInitialized = true
     
+    logFileAppend(s: "AppDataObservable: Executing queue")
     DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+      logFileAppend(s: "DQ Entered")
       guard let self=self else {
+        logFileAppend(s: "DQ self!=self, returning")
         return
       }
       
+      logFileAppend(s: "DQ get DB creation async")
       DispatchQueue.main.async { [weak self] in
+        logFileAppend(s: "DQ get DB creation async init")
         self?.pubFundDBCreationTime = DBUpdateObservable.getFundDBCreationTime()
+        logFileAppend(s: "DQ get DB creation success")
       }
       
       // Read DB file data
+      logFileAppend(s: "DQ reading DB")
       print("Reading DB file at: \(FLConstants.urlDB())")
       print("File originating from GCS: \(FLConstants.DB_FILENAME_GCS)")
       let (exists, data1, errorStr) = FLBinaryIOUtils.readFile(url: FLConstants.urlDB())
@@ -52,6 +61,7 @@ public class AppDataObservable: ObservableObject {
           logFileAppend(s: s)
           s = "No file"  // For the UI
         } else if errorStr == nil {
+          logFileAppend(s: "DQ DB file existed")
           s = errorStr!
         }
         DispatchQueue.main.async { [weak self] in
@@ -60,15 +70,19 @@ public class AppDataObservable: ObservableObject {
         return
       }
       
+      logFileAppend(s: "DQ Setting data")
       AppDataObservable._data = data1
       // print("Data read: \(AppDataObservable._data!.count)")
       // let _ = getHexDump(data: data, sindex: 0, eindex: 1024)
       // print("Hex dump\n\(s)")
       
       // Populates: _allFunds, and _typeAndName2Fund
+      logFileAppend(s: "DQ About to decode funds")
       AppDataObservable.decodeFunds()
       AppDataObservable._data = nil
-      
+      logFileAppend(s: "DQ Decoded funds")
+
+      logFileAppend(s: "DQ Iterating over all funds")
       for fi in AppDataObservable._allFunds {
         // _type2Funds
         if !AppDataObservable._type2Funds.keys.contains(fi._type) {
@@ -82,26 +96,33 @@ public class AppDataObservable: ObservableObject {
       }
       
       // Get portfolios from GCS
+      logFileAppend(s: "DQ Get portfolios from GCS")
       AppDataObservable.initializeEmptyPortfolios()
-      CoreIO.gcsRead(fromFile: FLConstants.PORTFOLIO_FILENAME_GCS) {
-        
+      FileGCSUtils.gcsRead(fromFile: FLConstants.PORTFOLIO_FILENAME_GCS) {
+        logFileAppend(s: "DQ GCS portfolios async entered")
+
         var message = "Initializing"
         if let error=$1 {
           message = "Error GCS fetching portfolio: \(error)"
+          logFileAppend(s: "DQ GCS portfolios error")
         }
         else if let data=$0 {
+          logFileAppend(s: "DQ GCS portfolios success")
           // _portfolios
           let (error, portfolioCount) = portfolioDecode(data: data)
           if let error=error {
-            message = "Error decoding portfolio: \(error)"
+            message = "Portfolio error: \(error)"
           } else {
             message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(portfolioCount)"
           }
         }
-        
+        logFileAppend(s: "DQ GCS portfolios done")
+
         // Portfolio retrieved from GCS
         // Now initialize all @Published structures
         DispatchQueue.main.async { [weak self] in
+          logFileAppend(s: "DQ updating presentables")
+
           // Initialize status message on # funds & portfolios
           self?.pubMessage = message
           
@@ -111,7 +132,7 @@ public class AppDataObservable: ObservableObject {
           }
           
           // Display the portfolios
-          for p in AppDataObservable._portfolios.keys.sorted() {
+           for p in AppDataObservable._portfolios.keys.sorted() {
             let dp4ModelP = DataModelsCalculator.getDP4WModelForFunds(fqName: p, displayName: p, subTitle: "", funds: AppDataObservable._portfolios[p]!)
             self?.pubPortfolios.append(dp4ModelP)
             self?.pubDP4ModelHM[p] = dp4ModelP
@@ -173,10 +194,13 @@ public class AppDataObservable: ObservableObject {
               funds: indexFunds)
             self?.pubIndexes.append(dp4ModelP)
           }
-          
+          logFileAppend(s: "DQ.main.async exit")
         }  // End: DispatchQueue.main.async
+        logFileAppend(s: "GCS portfolio fetched exit")
       }  // End: GCS portfolio file fetched closure
+      logFileAppend(s: "DQ global exit")
     }  // End: DispatchQueue.global
+    logFileAppend(s: "AppDataObservable.initialize exit")
   }  // End: initialize function
   
   public static func initializeEmptyPortfolios() {
@@ -413,6 +437,7 @@ public class AppDataObservable: ObservableObject {
 public func portfolioDecode(data: Data) -> (String?, Int) {
   var cindex = 0
   var portfolioCount = 0
+  var errorMsg: String? = nil
   while cindex < data.count {
     var type = ""
     (cindex, type) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
@@ -420,25 +445,24 @@ public func portfolioDecode(data: Data) -> (String?, Int) {
     
     var count = 0
     (cindex, count) = FLBinaryIOUtils.readIntSwift(data: data, sindex: cindex)
-    var error = false
     for _ in 0..<count {
       var typeAndName = ""
       (cindex, typeAndName) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
       print("...typeAndName: \(typeAndName)")
       if let fund = AppDataObservable._typeAndName2Fund[typeAndName] {
-        if !error {
+        if errorMsg != nil {
           AppDataObservable._portfolios[type]!.append(fund)
         }
       } else {
         logFileAppend(s: "*** Portfolio error, fund not found: \(typeAndName)")
         print("*** portfolioDecode, fund not found: \(typeAndName)")
         AppDataObservable._portfolios[type] = [D_FundInfo]()
-        error = true
+        errorMsg = "Not found: \(typeAndName)"
       }
     }
     portfolioCount += 1
   }
-  return (nil, portfolioCount)
+  return (errorMsg, portfolioCount)
 }
 
 public func portfolioEncode() -> Data {

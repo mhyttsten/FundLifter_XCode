@@ -8,34 +8,31 @@
 
 import Foundation
 
-
-var logFilePath : String {
+fileprivate var logFilePath : String {
   let documents = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
   let filePath = documents.appending("/FundLifterLog.txt")
   return filePath
 }
 
+fileprivate var logFileData: String = ""
 func logFileAppend(s: String) {
   let now = Date()
   let df = DateFormatter()
   df.dateFormat = "yyyy-MM-dd HH:mm:ss"
   let nowStr = df.string(from: now)
-  let str = "\(nowStr): \(s)\n"
+  let logStr = "\(nowStr): \(s)\n"
   
-  let prevDataFull = logFileRead()
-  let lastIndex = prevDataFull.count < 10000 ?
-    prevDataFull.endIndex : prevDataFull.index(prevDataFull.startIndex, offsetBy: 10000)
-  let prevData = prevDataFull[..<lastIndex]
-  print(str)
-  let logString = "\(str)\(prevData)"
+  logFileData = "\(logStr)\(logFileData)"
   
-  let d = Data(logString.utf8)
+  // Create an empty file
   let filemgr = FileManager.default
   FileManager.default.createFile(atPath: logFilePath, contents: nil, attributes: nil)
   if !filemgr.fileExists(atPath: logFilePath) {
     fatalError("Expected file to exist")
   }
-  
+
+  // Write all log info to file
+  let d = Data(logFileData.utf8)
   if let fh = FileHandle(forWritingAtPath: logFilePath) {
     fh.seekToEndOfFile()
     fh.write(d)
@@ -47,7 +44,7 @@ func logFileAppend(s: String) {
   }
 }
 
-func logFileRead() -> String {
+fileprivate func logFileRead() -> String {
   if let text = NSData(contentsOfFile: logFilePath) {
     let data = text.subdata(with: NSRange(text.startIndex..<text.endIndex))
     let str = String(decoding: data, as: UTF8.self)

@@ -12,13 +12,15 @@ import BackgroundTasks
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
-  
-
   let appRefreshTask = "com.pf.fundlifter.appRefreshTask"  // max 30s    BG,FB,idle,BG,FG,idle,...,charging
   let backgroundTask = "com.pf.fundlifter.backgroundTask"  // minutes ok
+
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    logFileAppend(s: "AppDelegate.application: entered")
     FirebaseApp.configure()
+    logFileAppend(s: "FirebaseApp configured")
     Analytics.setAnalyticsCollectionEnabled(true)
+    logFileAppend(s: "Analytics enabled")
     print("FirebaseApp.configure has been called")
     
     Crashlytics.crashlytics().setCustomValue("This is Magnus Value", forKey: "For Magnus Key")
@@ -26,33 +28,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
     Crashlytics.crashlytics().checkForUnsentReports { print("Are there unsent reports: \($0)") }
     Crashlytics.crashlytics().sendUnsentReports()
+    logFileAppend(s: "Crashlytics configured")
 //    assert(false);
 //    var i = [1, 2, 3]
 //    print("Here we print i: \(i[3])")
     
-    logFileAppend(s: "Ent application(dFWLO)")
-    print("Logfile path: \(logFilePath)")
-    print("Content of file is now")
-    print(logFileRead())
+    logFileAppend(s: "Now deploying BG/AR tasks")
 
+    // Background tasks, not sure we'll ever make this work
     BGTaskScheduler.shared.register(forTaskWithIdentifier: appRefreshTask, using: nil) { task in
       // Downcast the parameter to an app refresh task as this identifier is used for a refresh request.
       self.executeAppRefreshTask(task: task as! BGAppRefreshTask)
     }
-    
+
     BGTaskScheduler.shared.register(forTaskWithIdentifier: backgroundTask, using: nil) { task in
       // Downcast the parameter to a processing task as this identifier is used for a processing request.
       self.executeBackgroundTask(task: task as! BGProcessingTask)
     }
-    
+
     scheduleAppRefreshTask()
     scheduleBackgroundTask()
-    logFileAppend(s: "Exit app(dFWLO), success")
+    logFileAppend(s: "BG/AR deployed")
     return true
   }
 
   func applicationDidEnterBackground(_ application: UIApplication) {
-      logFileAppend(s: "Ent app(dFWLO)")
+    logFileAppend(s: "Ent app(dFWLO)")
       scheduleAppRefreshTask()
       scheduleBackgroundTask()
   }

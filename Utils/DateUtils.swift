@@ -1,17 +1,33 @@
 //
-//  FLDateUtils.swift
+//  DateUtils.swift
 //  FundLifter
 //
-//  Created by Magnus Hyttsten on 11/29/19.
-//  Copyright © 2019 Magnus Hyttsten. All rights reserved.
+//  Created by Magnus Hyttsten on 7/13/20.
+//  Copyright © 2020 Magnus Hyttsten. All rights reserved.
 //
 
 import Foundation
 import SwiftUI
 
+func weekOfYear(date: Date) -> Int {
+  let calendar = Calendar.current
+  let woy = calendar.dateComponents([.weekOfYear], from: date)
+  return woy.weekOfYear!
+}
+
+func string2Date(dateString: String, dateFormat: String) -> Date {
+  let dateFormatter = DateFormatter()
+//  dateFormatter.locale = Locale(identifier: "en_US_POSIX") // set locale to reliable US_POSIX
+  dateFormatter.timeZone = TimeZone(identifier: "UTC")
+  dateFormatter.dateFormat = dateFormat  // E.g: "yyyy-MM-dd'T'HH:mm:ssZ"
+  let date = dateFormatter.date(from: dateString)!
+  return date
+}
+
 public func doubleToString(value: Double) -> String {
   return String(format: "%0.2f", value)
 }
+
 public func doublesToString(value: [Double]) -> String {
   var s = ""
   for v in value {
@@ -186,7 +202,6 @@ fileprivate func dateLastFriday(startAt: Date=Date(), inclusive: Bool=true) -> D
   return d2
 }
 
-
 fileprivate func dateGetClosestFridayFromDate(fromDate: Date=Date(), inclusive: Bool=true) -> Date {
   let fromDate = Calendar.current.startOfDay(for: fromDate)
   let dlf = dateLastFriday(startAt: fromDate, inclusive: inclusive)
@@ -215,5 +230,4 @@ fileprivate func dateGetClosestFridayFromDate(fromDate: Date=Date(), inclusive: 
   
   return rv
 }
-  
   
