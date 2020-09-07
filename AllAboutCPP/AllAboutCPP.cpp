@@ -8,14 +8,17 @@
 
 #include <chrono>
 #include <complex>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iostream>  // Needed for std::cout etc
 #include <istream>
 #include <iterator>
 #include <list>
 #include <map>
 #include <numeric>
+#include <queue>
 #include <random>
 #include <ostream>
 #include <sstream>
@@ -670,7 +673,7 @@ void chapter09() {
   cout << sv04 << endl;
   
   // Regex
-  regex re01{"\\w{2}\\s*\\d{5}(-\\d{4})?)"};   // US post code: State(2), any number of spaces 5 digits, optionally -4digits
+  regex re01{R"(\w{2}\s*\d{5}(-\d{4})?)"};   // US post code: State(2), any number of spaces 5 digits, optionally -4digits
   // regex_match(): Find in string of known size
   // regex_search(): Find in stream
   // regex_replace(): Replace in stream
@@ -1090,7 +1093,7 @@ void chapter13() {
   // Time: <chrono>
   using namespace std::chrono;
   time_point ct00 = high_resolution_clock::now();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Needs <thread>
+  std::this_thread::sleep_for(std::chrono::milliseconds{100});  // Needs <thread>
   std::this_thread::sleep_for(1000ms + 33us);
   time_point ct01 = high_resolution_clock::now();
   cout << "Duration: " << duration_cast<milliseconds>(ct01-ct00).count() << "ms\n";
@@ -1227,6 +1230,80 @@ void chapter15() {
   // Single-write (no readers or writers allowed)
   //   unique_lock ul01{m01};
   
+  // Event: sleep <chrono>
+  auto t0 = chrono::high_resolution_clock::now();
+  this_thread::sleep_for(chrono::milliseconds{20});
+  auto t1 = chrono::high_resolution_clock::now();
+  // duration_cast adjust clocks unit to another unit
+  cout << "duration: " << duration_cast<chrono::nanoseconds>(t1-t0).count() << "ns\n";
+  
+  // Event: Exchanging events between 2 thread using <condition_variable>
+  // condition_variable allows one thread to wait for a condition/event caused by another thread
+  class Message {};
+  std::queue<Message> mqueue;
+  condition_variable mcond;
+  mutex mmutex;
+  // Reader thread: while(true) {
+  //   Need unique_lock, scoped_lock cannot be copied + does not have low-level ops like unlock
+  //     unique_lock lck {mmutex};
+  //   Wait on lck until queue is non-empty. While waiting mcond releases lck, then re-acquires it (if !empty)
+  //     mcond.wait(lck, []{ return !mqueue.empty;});  // lck is copied, does not support scoped_lock
+  //   Message m = mqueue.pop()
+  //   lck.unlock();
+  // }
+  // Writer thread: while(true) {
+  //   Message m;
+  //   scoped_lock lck {mmutex};
+  //   mqueue.push(m);
+  //   mcond.notify_one();
+  //   Lock is released here, end of scope
+  // }
+  
+  // <future>
+  // future and promise: Transfer a value efficiently between 2 tasks without using locks
+  // Task #1: Put a value into a promise. Value appear in Task #2 as a future.
+  // Future
+  //   future<Message> f00;
+  //   try {
+  //      Message m = f00.get();  // Thread blocks until value is available (or exception)
+  //   } catch (...)  {  }
+  // Promise
+  //   promise<Message> p00;
+  //   p00.set_value(Message {});
+  //   promise.set_exception(...);
+  // packaged_task is what glues futures and promises together
+  struct PTTask { static double accum(double* beg, double* end) { return accumulate(beg, end, 0); }  };
+  packaged_task<double(double*, double*)> pt00 {PTTask::accum};
+  packaged_task<double(double*, double*)> pt01 {PTTask::accum};
+  future<double> ft00 { pt00.get_future() };
+  future<double> ft01 { pt01.get_future() };
+  vector<double> v { 1.0, 2.0, 3.0, 4.0, 5.0 };
+  auto vs = v.size();
+  auto v0 = &v[0];
+  // Move needed: package_task can't be copied
+  thread tpf01 { move(pt00), v0,      v0+vs/2 };
+  thread tpf02 { move(pt01), v0+vs/2, v0+vs   };
+  cout << "Results from both threads: " << (ft00.get() + ft01.get()) << '\n';
+  
+  // async: Convenience to run parallel tasks
+  //   Never use if you need resources sharing/locks, you don't know how many threads it fires up
+  auto asf0 = async(PTTask::accum, v0, v0+vs/2);
+  auto asf1 = async(PTTask::accum, v0+vs/2, v0+vs);
+  cout << "Result from async: " << asf0.get() + asf1.get() << '\n';
+    
+  // Treat a thread as a function (but running in parallel)
+  // Don't underestimate cost of starting thread, e.g. if <x elements in vector, maybe do it sequentially
+  // Consider using processes instead of threads
+  // The thread is the interface to a system thread
+  // Use .join to wait for a thread to complete
+  // Use scoped_thread: i) To manage mutex's, ii) Aquire multiple locks
+  // Use shared_lock: To implement reader/writer
+  // Use condition_variables: To manage communication amoung threads
+  // Use unique_lock (instead of scoped_lock) if: i) Need to copy a lock, ii) Need .lock() .unlock() explicit control
+  // Prefer packaged_task/future/promise over threads/mutexes (return value: promise, get value: future)
+  //   (can also manage exception propagation)
+  //   Use packaged_task and future to express a request to external service and wait for response
+  // Use async to launch a simple task in parallel
 }
 
 // ***************** Chapter 16
@@ -1234,7 +1311,6 @@ void chapter16() {
   std::cout << "*** Starting Chapter 16" << std::endl;
   using namespace std;
 }
-
 
 // Terminology:
 //    Variadic templates: Template receiving variables #args with variable types
