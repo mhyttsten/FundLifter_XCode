@@ -6,6 +6,9 @@
 //  Copyright © 2020 Magnus Hyttsten. All rights reserved.
 //
 
+#include "CPPIndentWriter.hpp"
+
+#include <cstring>
 #include <chrono>
 #include <complex>
 #include <condition_variable>
@@ -32,7 +35,6 @@
 
 int main(int argc, char* argv[]) {
   using namespace std;
-  
   void chapter01(); chapter01();
   void chapter02(); chapter02();
   void chapter03(); chapter03();
@@ -48,7 +50,9 @@ int main(int argc, char* argv[]) {
   void chapter13(); chapter13();
   void chapter14(); chapter14();
   void chapter15(); chapter15();
-  void chapter16(); chapter16();
+
+  void utils(); utils();
+  void coding_problems(); coding_problems();
 }
 
 // ***************** Chapter 01
@@ -336,9 +340,59 @@ void chapter04() {
 }
 
 // ***************** Chapter 05
+using namespace std;
+struct C05String {
+  C05String() { cout <<  "C05String: Default constructor\n"; }
+  C05String(const char* str) {
+    cout << "C05String: const char* constructor\n";
+    _size = strlen(str);
+    _data = new char[_size];
+    memcpy(_data, str, _size);
+  }
+  C05String(const C05String& str) {
+    cout << "C05String: Copy constructor\n";
+    _size = std::strlen(str._data);
+    _data = new char[_size];
+    memcpy(_data, str._data, _size);
+  }
+  C05String(C05String&& rv) {
+    cout << "C05String: RV constructor\n";
+    _size = rv._size;
+    _data = rv._data;
+    rv._data = nullptr;
+  }
+  ~C05String() { cout << "C05String:Destructor\n";  delete _data; }
+  void print() { for (int i=0; i < _size; i++) cout << _data[i]; cout << '\n'; }
+  char* _data = nullptr;
+  size_t _size;
+};
+struct C05Entity {
+  C05Entity(const C05String& s) : _name(s) { cout << "C05Entity: CC\n"; }
+//  C05Entity(C05String&& rv): _name((C05String&&)rv)     { cout << "C05Entity: RV C\n"; }
+  C05Entity(C05String&& rv): _name(move(rv))     { cout << "C05Entity: RV C\n"; }
+  C05String _name;
+  void print() { _name.print(); }
+};
 void chapter05() {
-  std::cout << "*** Starting Chapter 5: Essential Operations" << std::endl;
+  std::cout << "\n*** Starting Chapter 5: Essential Operations" << std::endl;
   using namespace std;
+  
+  cout << "Testing the Cherno thing\n";
+  C05String c05str("Cherno");
+  cout << "...1\n";
+  C05Entity ch00(C05String("Cherno"));
+  cout << "...2\n";
+  C05Entity ch01(c05str);
+  cout << "\n";
+  
+  C05String c05str2 = move(c05str);
+  
+  // Rules
+  // - An argument by-value, uses an rvalue (temporary) object directly but copy constructor if lvalue (Xcode)
+  // std::move at compile time it figures out its argument type
+  //    move takes an existing variable and makes it a tmp one
+  // delete[] array_type;
+  // Assignment operator: Delete your prev resources, if rvalue is this then no-op, return SelfType& (*this)
   
   // For a class with a pointer member, you probably want to defined copy and move operations
   // Such non-trivial class probably needs the below
@@ -370,21 +424,22 @@ void chapter05() {
     ~X2() { cout << "Destructor" << endl; }
     
     static X2 foo1(X2 x) {
-      
       cout << "foo1 entry" << endl;
       // Return causes MC
       X2 x2 = x;
       x2 = x;
-      
       cout << "foo1 exit" << endl;
       return x;
     }
   };
+  cout << "Now doing a series of tests\n";
   X2 x20 = X2();
   cout << endl << "Test 1" << endl;
   X2 x21 = X2::foo1(x20);
   cout << endl << "Test 2" << endl;
   x21 = X2::foo1(x20);
+  cout << "\nTest 21\n";
+  x21 = X2::foo1(X2());
   
   // Conclusion: Move C/A is called when a stack object is returned by value
   // C or A depends on if caller initializes new object or assigns to old one
@@ -486,7 +541,7 @@ template<typename T>
 const std::vector<T> acceleration = { T{}, T{-9.8}, T{} };
 
 void chapter06() {
-  std::cout << "*** Starting Chapter 6" << std::endl;
+  std::cout << "\n*** Starting Chapter 6" << std::endl;
   using namespace std;
   
   pair<int,double> p0 { 1.5,2 };
@@ -633,7 +688,7 @@ void testTo() {
 }
 
 void chapter09() {
-  std::cout << "*** Starting Chapter 09" << std::endl;
+  std::cout << "*** Starting Chapter 09: Strings" << std::endl;
   using namespace std;
   
   string s00 = "hello";
@@ -645,8 +700,8 @@ void chapter09() {
   s01.replace(0,3,"good");
   s01[0] = 'b';
   s01.at(0) = 'c';
-  cout << s01 << endl;
-  cout << s01.substr(0,2) << endl;
+  cout << "s01: " << s01 << endl;
+  cout << "s01.substr: " << s01.substr(0,2) << endl;
   
   // string also support: ==, !=, <, <=, >, >=
   // And iterators
@@ -1117,7 +1172,10 @@ void chapter13() {
   cout << "sizeof(MySpace): " << sizeof(MySpace) << '\n';
   
   // iterator_traits: Find traits of iterators. c++20 concepts will simplify this
-  //    iterator_traits<vector<int>> it00;
+  //    random access iterators: required by sort
+  //    forward_iterator: single_linked list
+  // iterator_traits<vector<int>> it00;
+  
   
   cout << "is_arithmetic<int>: " << is_arithmetic<int>() << '\n';
   cout << "is_arithmetic<MySpace>: " << is_arithmetic<MySpace>() << '\n';
@@ -1272,6 +1330,7 @@ void chapter15() {
   //   p00.set_value(Message {});
   //   promise.set_exception(...);
   // packaged_task is what glues futures and promises together
+  /*  For some reason below causes SIGABRT on exit from function
   struct PTTask { static double accum(double* beg, double* end) { return accumulate(beg, end, 0); }  };
   packaged_task<double(double*, double*)> pt00 {PTTask::accum};
   packaged_task<double(double*, double*)> pt01 {PTTask::accum};
@@ -1290,6 +1349,7 @@ void chapter15() {
   auto asf0 = async(PTTask::accum, v0, v0+vs/2);
   auto asf1 = async(PTTask::accum, v0+vs/2, v0+vs);
   cout << "Result from async: " << asf0.get() + asf1.get() << '\n';
+   */
     
   // Treat a thread as a function (but running in parallel)
   // Don't underestimate cost of starting thread, e.g. if <x elements in vector, maybe do it sequentially
@@ -1306,12 +1366,389 @@ void chapter15() {
   // Use async to launch a simple task in parallel
 }
 
-// ***************** Chapter 16
-void chapter16() {
-  std::cout << "*** Starting Chapter 16" << std::endl;
-  using namespace std;
+// Terminology:
+//   Invariants: Conditions that hold true for a class (e.g. like a function pre-/post-condition
+//      It is constructors responsibility to check for this
+//   RAII: Resource Acquisition Is Initialization: Allocate in constructor, deallocate in destructor
+//   Constrained Template Arguments: == C++20 Concepts
+//   Value Template Argument: A template argument can be e.g. Vector<Elem, 4> v;
+//      E.g, size can now be constexpr size();  Since 4 is known at compile time
+//   Template Argument Deduction (C++17): pair p = {1, 5.2};
+//   Other types of templates
+//     Function Templates e.g. arg/return value
+//     Function Objects operator ()
+//     Lambda expressions
+//     Variable Templates: constexpr bool Assignable = is_assignable<T1& T2>::value;
+//   Compile-time if:  if constexpr(is_pod<T>::value) { ... }  // Select at compile time (is_pod = true if type can be trivially copied)
+//   Modules (C++20)
+//   Concepts (C++20)
+//   Variadic templates: Template receiving variables #args with variable types
+//     Fold expressions: int a = (v + ... + 0);  // Add all elements of v to 0
+//   Predicate: Looking for an element that fulfills a specific requirement, e.g find_if (using Function Object or lambda)
+//   Type functions: Evaluated at compile time: constexpr float min = numeric_limits<float>::min();
+//   When task t1 puts a value into a promise, task 1 reads the value in corresponding future
+//   TODO: Iterator traits
+//   TODO: && and rvalues, why would you foo(int&& a)
+//   TODO: std::tuple_element
+
+template<typename T>
+struct U00_C0 {
+  int _a, _b;
+  vector<T> _v;
+  U00_C0<T>(initializer_list<T> a) : _v{a} {
+    _v.assign(a);
+    _v.assign(a.begin(), a.end());
+  }  // All works
+  U00_C0<T>(int a, int b) { _a = a; _b = b; }
+  U00_C0<T>(double a, double b) { _a = a; _b = b;}
+};
+
+template<typename T>
+struct U00_C1 {
+  int _a, _b;
+  U00_C1<T>(double a, double b) { _a = a; _b = b;}
+};
+
+void utils()  {
+  // TL;DR: {} construction enforces only initializer_list if defined, otherwise uses other constructors
+  // Constructor with initializer_list overrides a fixed arg constructor when using {}
+  cout << "Starting utils\n";
+  U00_C0<int> tc00 { 10 };
+  U00_C0<int> tc01 { 10, 20 };  // Will still use initializer_list<int> constructor
+  U00_C0<int> tc02(10, 20);     // Will call (int, int) constructor
+  U00_C0<int> tc03 { 10, 20, 30 };
+  // U00_C0<int> tc04 { 3.14, 2.72 };  // Error, no initializer_list<double>
+  U00_C0<int> tc05(3.14, 2.72);  // Error
+  U00_C1<int> tc11 {3.14, 2.72}; // This works U00_C1 has a double initializer_list
+
+  // Size is 4
+  std::size_t intsize = sizeof(int);  // Can be used for classes
+  cout << "size of int: " << intsize << '\n';
+  
+  // *** vector
+  cout << "*** vector" << '\n';
+  vector<int> v00(4, 8);  // 4 elemenent with value 8, alt = { 8, 8, 8, 8 };
+  vector<int> v01 { 1, 2, 3, 4 };
+  // Element access
+  v00[0] = 2;     // No range checking
+  v00.at(0) = 3;  // Range checking
+  int efirst = v00.front();
+  int elast  = v00.back();
+  int* data = v00.data();
+  // Iterators
+  auto ibegin = v00.begin();
+  *ibegin = 10;
+  auto iend   = v00.end();
+  auto icbegin = v00.cbegin();
+  // *cbegin = 20;  // Error cbegin is a constant iterator
+  auto icend = v00.cend();
+  cout << "Forward iterator: " << *v01.cbegin() << '\n';
+  cout << "Reverse iterator: " << *v01.crbegin() << '\n';
+  cout << "Reverse iterator++1: " << *(++v01.crbegin()) << '\n';  //
+  // Capacity
+  v00.empty();
+  v00.size();
+  v00.reserve(10);
+  v00.capacity();
+  v00.shrink_to_fit();
+  // Modifiers
+  v00.clear();
+  v00.assign(10, 8);  // Create 10 elements of value  8
+  v00.assign({ 1, 2, 3, 4});  // Assign with initializer list
+  v00.insert(v00.begin(), 10);  // Insert 10 at front()
+  v00.erase(v00.begin(), v00.begin()+1);
+  v00.push_back(57);  // Append element
+  v00.pop_back();  // Remove last element (not returning it)
+  
+  // *** Pair and Tuple
+  cout << "*** pair/tuple" << '\n';
+  pair<int, int> p00 = { 1, 2 };
+  int p00i = p00.first;
+  p00i = p00.second;
+  auto p01 = std::make_pair(1, "hello");
+  auto [p02_1, p02_2] = std::make_pair(1, "hello");
+  // Before C++17: int p03_1; string p03_2; std::tie(p03_1, p03_2) = std::make_pair(1, "hello");
+  tuple<int, int, int> t00 = { 1, 2, 3 };
+  auto t01 = std::make_tuple(1, "hello", 2, 3.14);
+  auto [t02_1, t02_2, t02_3, t02_4] = t01;
+  cout << "Second in a tuple: " << std::get<1>(t01) << '\n';
+
+  // *** unordered_map
+  cout << "*** unordered_map\n";
+  unordered_map<string, int> um00 = { {"a", 1}, {"b", 2} };
+  um00["c"] = 3;  // Insert or replace
+  um00.insert(pair {"e", 99});
+  um00.empty();
+  um00.size();
+  for (auto l=um00.begin(); l!=um00.end(); l++)   { cout << " {" << l->first << "," << l->second << '}'; }  cout << '\n';
+  vector<pair<string, int>> vum00 { um00.begin(), um00.end() };
+  for (auto l=vum00.begin(); l!=vum00.end(); l++) { cout << " {" << l->first << "," << l->second << '}'; }  cout << '\n';
+  cout << "um00[\"b\']: " << um00["b"] << ", " << um00.at("b") << '\n';
+  cout << "um00.bucket_count: " << um00.bucket_count() << ", " << um00.bucket_size(0) << '\n';
+  unordered_map<string, int> um01 { vum00.begin(), vum00.end() };
+  vum00.insert(vum00.begin(), {{"a", 1}, {"b", 2}});
+  um01["a"] = 99;
+  um01.insert({{"a", 1}, {"b", 2}});
+  cout << "Insert\n";
+  for (auto l=um01.begin(); l!=um01.end(); l++)   { cout << " {" << l->first << "," << l->second << '}'; }  cout << '\n';
+
+  
+  cout << "*** string" << '\n';
+  string s00 = "hello";
+  s00.replace(0,2,"goodby");
+  cout << "  s00: " << s00 << '\n';
+  s00 += " throw";
+  cout << "  s00: " << s00 << '\n';
+  s00.assign(8, 'a');
+  cout << "  s00: " << s00 << '\n';
+  s00 = "0123456789";
+  cout << "  s00: " << s00.substr(4, 2) << '\n';
+
+  // *** Prefix vs postfix ++
+  cout << "*** prefix vs postfix ++" << '\n';
+  int pia = 0;
+  int pib = (pia++) + 1;
+  int pic = pia++ + 1;
+  cout << "pia: " << pia << ", pib: " << pib << ", pic: " << pic << '\n';  //  pia=2, pib=1, pic=2
+  for (int i=0; i < 4; ++i) { cout << i << ", "; } cout << '\n';  // 0, 1, 2, 3
+  int pif = 0;
+  if (pif++) {  } // Will not be entered, but aif==1 after closing }
+  
+  pia = pib = pic = 0;
+  pia = pib++ + pib;
+  cout << "Increment statement pia: " << pia << '\n';
+
+  int pii[] = { 0, 1, 2 };
+  int* piip1 = pii;
+  int* piip2 = &pii[0];  // Creates a pointer to first element of pii
+  cout << "pii[0]: " << pii[0] << ", *piip2: " << *piip2 << '\n';
+  cout << "piip1 == piip2?: " << ((piip1==piip2) ? "true": "false") << '\n';
+
+  string pis[] = { "a", "stones", "throw" };
+  string* pisp1 = pis;
+  string* pisp2 = &pis[0];
+  cout << "pisp1 == pisp2?: " << ((pisp1==pisp2) ? "true": "false") << '\n';
+  cout << "*++pisp1: " << *++pisp1 << '\n';
+  cout << "*pisp2++: " << *pisp2++ << '\n';
+  cout << "*pisp2: "   << *pisp2 << '\n';
+
+  // *** Function pointers
+  cout << "\n*** Function pointers\n";
+  struct FP00 { static string foo(const string& s) { return "FP00::foo: " + s; }; };
+  auto fp00Lambda = [](const string& s)->string { return "FP00Lambda: " + s; };
+  string (*fp00Foo)(const string&);
+  fp00Foo = FP00::foo;
+  cout << fp00Foo("Calling fptr through static struct function\n");
+  fp00Foo = fp00Lambda;
+  cout << fp00Foo("Calling fptr through lambda\n");
+  
+  cout << "\n*** General\n";
+  // Create an array as a literal
+  for (auto& x: { "burgers", "fries", "soda" }) { }
+  uint32_t unsigned_int_32_bits = 100;
+  const void* g01 = "Hello";
+  cout << "Analyzing g01 content: ";
+  for (int i=0; i < 6; i++)  cout << (int)((char*)g01)[i] << ", "; cout << '\n';
+  void* g02 = malloc(6);
+  memcpy(g02, g01, 6);
+  cout << "g02: " << (char*)g02 << '\n';
+  
+  cout << "\n*** const, lvalue/rvalue, and move semantics\n";
+  // Reference to an int object which happens to be constant
+  // c00 must be initialized, and cannot be reassigned
+  // Compiler probably generates: int tmp = 10; and then uses it as 10 rvalue
+  const int& c00 = 10;
+  // A reference to a constant int
+  // Same as c00
+  int const& c01 = 20;
+
+  // Constant reference to an int
+  // Error: References are always constant (refer to the same memory)
+  // int& const c02 = 30;
+
+  // Integer to a reference of a const
+  // Error: Makes no sense
+  // const& int c03 = 40;
+
+  
+  // int& c000 = 10;  // ERROR: Non-const ref cannot bind to a temporary variable
+  auto crl00 = [](string& a)->string { return a; };
+  auto crl01 = [](const string& a)->auto { return a; };
+  string a = "10", b = "20";
+  crl00(a);  // Ok
+  // crl00(a+b);  // ERROR: Non-const ref cannot bind to a temporary variable (argument is string&)
+  crl01(a+b);  // Ok, "const string& can accept an rvalue"
+  // Can we write a lambda that only accepts rvalue references? Yes.
+  auto crl020 = [](string&& a) { return (string&&)a; };
+  auto crl02 = [](string&& a)->string {
+    return a;
+  };
+  crl02("hello");
+  crl02(a+b);
+  string&& crlv00 = a+b;  // OK: we can assign to a temporary variable
+  const string& crlv01 = a+b;
+  crlv00 = b+a;
+  // crl02(crlv00);  // ERROR: crlv00 is an lvalue
+  // string&& crlv01 = a;  // ERROR: Cannot assign to an lvalue
+  // crl02(a);  // ERROR: Cannot pass lvalue to argument only accepting rvalue references
+  // You can overload a function, one accepting string& and one string&&
+  //   string&& is chosen over one that has const string&
+  // Why rvalue reference?
+  //   Optimization: If we know we are taking in a temporary object. Then,
+  //      a. We don't have to worry about keeping it alive
+  //      b. We can steel its resources (e.g. char*) and use it somewhere else
+  //         We know it wont exist beyond the function scope
+
+  // Move constructor
+  // 1. Avoid copy construction of tmp argument object
+  struct CRLEntity {
+    CRLEntity(int a)            { _a = a; cout << "CRLEntity constructor\n"; };
+    CRLEntity(const CRLEntity&) { cout << "CRLEntity, copy constructor\n"; };
+    CRLEntity(CRLEntity&&)      { cout << "CRLEntity, move constructor\n"; };
+    int _a;
+  };
+  auto crll00 = [](CRLEntity v)  { cout << "Lambda 1\n"; };
+  crll00(CRLEntity{1});  // Creates temporary object, the copy constructs it into v
+  auto crll01 = [](const CRLEntity&& v)  { };
+  crll01(CRLEntity{2});  // Calls CRLEntity(const CRLEntity&&), rip things from tmp object
+  
+  struct IOBase {};
+  struct IODerived : IOBase {};
+  struct IODisjoint {};
+  cout << "\n1. Is base class: " << std::is_base_of<IOBase,IOBase>::value << '\n';
+  cout << "2. Is base class: "   << std::is_base_of<IOBase,IODerived>::value << '\n';
+  cout << "3. Is base class: "   << std::is_base_of<IODerived,IODerived>::value << '\n';
+  cout << "4. Is base class: "   << std::is_base_of<IOBase,IODisjoint>::value << '\n';
+  
+
 }
 
-// Terminology:
-//    Variadic templates: Template receiving variables #args with variable types
+// **********************************************************************
+void coding_problems() {
+  cout << "\ncoding_problems\n";
+  string sortByOccurrence_um(const string& str);
+  cout << "sortByOccurrence_um: [" << sortByOccurrence_um("This is an example string") << "]" << '\n';
+  
+  bool isPeriodic(int period, const string& str);
+  cout << "isPeriodic: " << isPeriodic(3, "abcabcacb") << '\n';
+  
+  bool isBalancedBTMain();
+  cout << "isBalancedBT: " << isBalancedBTMain() << '\n';
 
+
+}
+
+//---
+bool isPeriodic(int period, const string& str) {
+  if (str.length() % period != 0)
+    return false;
+  for (int i=period; i < str.length(); i+=period) {
+    if (str.substr(0, period) != str.substr(i,period)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+//---
+struct BTNode {
+  string n;
+  BTNode* l;
+  BTNode* r;
+  int v;
+};
+bool isBalancedBTMain() {
+  
+//  struct Node *root = newNode(3);
+//  root->left        = newNode(2);
+//  root->right       = newNode(5);
+//  root->left->left  = newNode(1);
+//  root->left->right = newNode(4);
+  
+  //       40
+  //   20       50
+  // 10  30
+  BTNode n1 = BTNode{"n10", nullptr, nullptr, 10};
+  BTNode n2 = BTNode{"n20", nullptr, nullptr, 20};
+  BTNode n3 = BTNode{"n30", nullptr, nullptr, 30};
+  BTNode n4 = BTNode{"n40", nullptr, nullptr, 40};
+  BTNode n5 = BTNode{"n50", nullptr, nullptr, 50};
+  n4.l = &n2;
+  n4.r = &n5;
+  n2.l = &n1;
+  n2.r = &n3;
+  CPPIndentWriter iw;
+  cout << '\n';
+  int minValue = 0;
+  bool isBalancedBT(CPPIndentWriter&, const BTNode*);
+  bool r = isBalancedBT(iw, &n4);
+  cout << iw.getString();
+  return r;
+}
+
+string btGetStr(const BTNode* n) {
+  return n != nullptr ? n->n : "null";
+}
+
+bool isBalancedBT(CPPIndentWriter& iw, const BTNode* n)  {
+  if (n == nullptr) {
+    return true;
+  }
+  
+  bool l = isBalancedBT(iw, n->l);
+  cout << "Visited: " << n->v << '\n';
+  bool r = isBalancedBT(iw, n->r);
+  
+  return false;
+}
+
+
+//---
+// function pointer
+// lambda binds : lambda is the way to do nested C++ functions
+// cout << boolalpha
+// std::less, std::greater: How do they work
+bool  sortByOccurrence_m_f(const pair<char,int>& v1, const pair<char,int>& v2) {
+  return v1.second > v2.second ? true : v1.first < v1.second;
+}
+struct sortByOccurrence_m_fo { bool operator()(const pair<char,int>& v1, const pair<char,int>& v2) { return v1.second > v2.second ? true : v1.first < v1.second; } };
+string sortByOccurrence_m(const string& str) {
+
+  auto lambda = [](const pair<char,int>& v1, const pair<char,int>& v2)->bool { return v1.second > v2.second ? true : v1.first < v1.second; };
+  bool (*fptr)(const pair<char,int>& v1, const pair<char,int>& v2);
+  fptr = sortByOccurrence_m_f;
+  fptr = &sortByOccurrence_m_f;
+  fptr = lambda;
+
+  map<char, int, sortByOccurrence_m_fo> m00;
+  map<char, int, decltype(lambda)> m01(lambda);
+  map<char, int, bool (*)(const pair<char,int>&, const pair<char,int>&)> m02(lambda);
+  map<char, int, std::function<bool(const pair<char,int>&,const pair<char,int>&)>> m03(lambda);
+  map<char, int, std::function<bool(const pair<char,int>&,const pair<char,int>&)>> m04(fptr);
+  map<char, int, bool (*)(const pair<char,int>&, const pair<char,int>&)> m05(fptr);
+
+  return "";
+}
+
+//---
+string sortByOccurrence_um(const string& str) {
+  unordered_map<char,int> um;
+  for (auto c: str) {
+    if (um.count(c) == 0) {
+      um[c] = 0;
+    }
+    um[c]++;
+  }
+
+  vector<pair<char,int>> v(um.begin(), um.end());
+  sort(v.begin(), v.end(), [](const auto& v1, const auto& v2) {
+    return (v1.second == v2.second) ? v1.first < v2.first : v1.second > v2.second;
+  });
+
+  string r, tmp;
+  for (const auto& e: v) {
+    r += tmp.assign(e.second, e.first);
+  }
+  
+  return r;
+}
