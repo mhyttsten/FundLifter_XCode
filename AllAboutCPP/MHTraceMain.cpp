@@ -7,19 +7,6 @@
 //  Copyright © 2021 Magnus Hyttsten. All rights reserved.
 //
 
-// Environment variables
-//    MHTRACER_INDENT=0
-//    MHTRACER_FILE_OUT=1  // if true write to /tmp/mhtracer_<pid>.log
-//
-
-/*
-collective_executor_handle->get()->remote_access()->CheckPeerHealth(
-    task, timeout_in_ms, [&done, status](const Status& s) {
-      status->status = s;
-      done.Notify();
-    });
-*/
-
 #include <cctype>
 #include <iostream>
 #include <set>
@@ -29,10 +16,26 @@ collective_executor_handle->get()->remote_access()->CheckPeerHealth(
 #include "CPPUtils.h"
 #include "CPPIndentWriter.h"
 
+// TODO: Fixes and extensions
+// - Check CSRSparseMatrix is not skipFunction filtered causing metadata_{} errors
+//   tensorflow/tensorflow/core/kernels/sparse/sparse_matrix.h
+//   Observe however, that you intercept metadata_() non-function in other CSRSparseMatrix constructors
+//   Probably need a way to parse member initializers after :...
+//   Related to: Also gives support for others, e.g "IdAllocator" ': id1{}, id2{} {...
+//   (tensorflow/tensorflow/core/summary/summary_db_writer.cc)
+// - Python does not skip comments and whitespaces, could it lead to errors?
+
 static string MHTRACER_LINENUMBER_TAG = "MHTRACER_LN_TAG";
-static string ENV_MHTRACER_INDENT = "MHTRACER_INDENT";
-static string PATH_ENV_MHTRACER_FILE = "MHTRACER_USEFILE";
+static string ENV_MHTRACER_INDENT = "MHTRACER_INDENT_";  // Tied to PID
+static string PATH_ENV_MHTRACER_FILE = "MHTRACER_USEFILE";   // Set this a part of PATH variable to write to file
+static string PATH_ENV_MHTRACER_DISABLE = "MHTRACER_DISABLE";   // Set this a part of PATH variable to disable tracing
 static string MHTRACER_FILENAME_PREFIX = "/tmp/mhtracer_";
+
+// ****************************************************************
+vector<pair<size_t,string>> archiveCommentsAndStringLiterals;
+const char charArchive = '@';
+// const char charArchive = 0x02;
+
 
 int getLineNumber(string in, size_t idx_end);
 string generateClass(CPPIndentWriter& iw, string fileName);
@@ -40,7 +43,12 @@ void encodeCommentsAndStringLiterals(string&);
 void decodeCommentsAndStringLiterals(string& fin);
 string genPrintf(const string& functionName, const string& prefix, const string& fileName);
 
-// TODO: Add generator support
+
+string washFileName(string fname) {
+  string fileName = CPPUtils::strReplace(fname, "tensorflow", "tf");
+  fileName = CPPUtils::strReplace(fileName, "framework", "fw");
+  return fileName;
+}
 
 string generatePYCode(int indent, int lineNumber, string functionName, string fileName) {
   string printGuts  = functionName + " [PY @ " + to_string(lineNumber) + " @ " + functionName + " @ " + fileName + "]";
@@ -48,44 +56,179 @@ string generatePYCode(int indent, int lineNumber, string functionName, string fi
   CPPIndentWriter iw;
   string istr;
   istr.assign(indent, ' ');
-  iw.println(istr + "indent = os.environ.get('" + ENV_MHTRACER_INDENT + "')");
+  iw.println(istr + "env_indent_variable = '" + ENV_MHTRACER_INDENT + "' + str(os.getpid())");
+  iw.println(istr + "indent = os.environ.get(env_indent_variable)");
   iw.println(istr + "if indent is None:");
   iw.println(istr + "   indent = 0");
   iw.println(istr + "indent = int(indent) * \" \"");
+//  iw.println(istr + "indent = \"\"");
   iw.println(istr + "envPath = os.environ.get('PATH')");
-  iw.println(istr + "if envPath is not None and '" + PATH_ENV_MHTRACER_FILE + "' not in envPath:");
+  iw.println(istr + "if envPath is not None and '" + PATH_ENV_MHTRACER_DISABLE + "' in envPath:");
+  iw.println(istr + "   pass");
+  iw.println(istr + "elif envPath is None or '" + PATH_ENV_MHTRACER_FILE + "' not in envPath:");
 //  iw.println(istr + "isFile = os.environ.get('" + ENV_MHTRACER_FILE + "')");
 //  iw.println(istr + "if isFile is None:");
   iw.println(istr + "   print(indent, \"" + printGuts + "\")");
-  iw.println(istr + "else:");
-  iw.println(istr + "   pid = os.getpid()");
-  iw.println(istr + "   fileName = \"" + MHTRACER_FILENAME_PREFIX + "\" + str(pid) + \".log\"");
+  iw.println(istr + "elif envPath is not None and '" + PATH_ENV_MHTRACER_FILE + "' in envPath:");
+  iw.println(istr + "   fileName = \"" + MHTRACER_FILENAME_PREFIX + "\" + str(os.getpid()) + \".log\"");
   iw.println(istr + "   fp = open(fileName, \"a\");");
   iw.println(istr + "   fp.write(indent + \"" + printGuts + "\")");
   iw.println(istr + "   fp.close()");
   return iw.getString();
 }
 
-string compilePython(string fin) {
-  string fout;
+bool isWhitespace(char c);
+
+// Returns [idx_start, index] of the matching element
+pair<size_t, int> findFirst(string in, const vector<string>& v, size_t idx_start, bool scanBeyondMatch=false) {
+  pair<size_t, int> winner(string::npos, -1);
   
-  fout += "import os\n";
+  // Check that we have descending order, needed to get best match
+  assert(v.size() > 0);
+  int longest = -1;
+  for (auto s: v) {
+    if (longest == -1)
+      longest = (int)s.size();
+    else {
+      assert(longest >= s.size());
+      longest = (int)s.size();
+    }
+  }
   
+  // Now scan for best match
+  size_t idx_v = 0;
+  while (idx_v < v.size()) {
+    size_t idx = in.find(v[idx_v], idx_start);
+    if (idx == string::npos) {
+      idx_v++;
+      continue;
+    }
+    if (winner.first == string::npos) {
+      winner =  pair<size_t, int>(idx, idx_v);
+      idx_v++;
+      continue;
+    }
+    // If first that happens ever, then it's the winner (we wouldn't start from 0 multiple times)
+    if (idx == 0) {
+      winner = pair<size_t, int>(idx, idx_v);
+      idx_v++;
+      continue;
+    }
+    // Track back any escape situations
+    if (in[idx-1] == '\\') {
+      int count = 0;
+      size_t tmp = idx;
+      while (tmp >= 0 && in[tmp] == '\\') {
+        idx--;
+        count++;
+      }
+      // There is an escape situation
+      if (count % 2 != 0) {
+        idx_start = idx+1;
+        continue;  // We continue with current, since it might come immediately after escaped char
+      }
+    }
+    // We have a true match, does it win?
+    if (winner.first > idx
+        || (winner.first == idx && v[winner.second].size() < v[idx_v].size())) {
+      winner = pair<size_t, int>(idx, idx_v);
+    }
+    idx_v++;
+  }
+  if (scanBeyondMatch) {
+    if (winner.first != string::npos) {
+        winner.first += v[winner.second].size();
+    } else {
+      winner.first = in.size();
+    }
+  }
+  return winner;
+}
+
+size_t archiveAndMoveForward(string& fin, size_t start, size_t end);
+string compilePython(string fin, string fileName) {
+  fileName = washFileName(fileName);
+
   size_t idx_current = 0;
+
+  // Replace all comments
+  idx_current = 0;
+  vector<string> kws = {"\"\"\"", "\'\'\'", "#", "\"", "\'"};
+  while (true) {
+    pair<size_t, int> idx_start = findFirst(fin, kws, idx_current, false);
+    if (idx_start.first == string::npos) break;
+    pair<size_t, int> idx_end = pair<size_t, int>(string::npos, 0);
+
+    unsigned long size_end = 0;
+    switch (idx_start.second) {
+      case 0:
+        idx_end = findFirst(fin, {kws[0]}, idx_start.first+kws[0].size(), true);
+        size_end = kws[0].size();
+        break;
+      case 1:
+        idx_end = findFirst(fin, {kws[1]}, idx_start.first+kws[1].size(), true);
+        size_end = kws[1].size();
+        break;
+      case 2:
+        idx_end = findFirst(fin, {"\n"}, idx_start.first+1, true);
+        size_end = string("\n").size();
+        break;
+      case 3:
+        idx_end = findFirst(fin, {"\""}, idx_start.first+1, true);
+        size_end = string("\"").size();
+        break;
+      case 4:
+        idx_end = findFirst(fin, {"\'"}, idx_start.first+1, true);
+        size_end = string("\'").size();
+        break;
+      default:
+        assert(false);
+    }
+    string data = fin.substr(idx_start.first, idx_end.first-idx_start.first);
+    if (data.find("# this is the") == 0) {
+      cout << "Opportunity\n";
+    }
+    idx_current = archiveAndMoveForward(fin, idx_start.first, idx_end.first);
+    if (idx_current == string::npos || idx_current >= fin.size())
+      break;
+  } // End-of replace all comments and string literals
+  
+  // First, import os after from __future__ statements
+  cout << "Archive [" << "]\n";
+  idx_current = 0;
+  string fout;
+  string c_from_future = "from __future__ ";
+  size_t idx_c = fin.rfind(c_from_future);
+//  cout << "[" << fin.substr(idx_c-5, 20) << "]\n";
+  if (idx_c != string::npos) {
+    size_t idx_c2 = fin.find("\n", idx_c);
+//    cout << "[" << fin.substr(idx_c, idx_c2-idx_c) << "]\n";
+//    cout << "[" << fin.substr(idx_c2+1, 20) << "]\n";
+    if (idx_c2 != string::npos) {
+      fout += fin.substr(0, idx_c2+1);
+      idx_current = idx_c2+1;
+    } else {
+      fout += fin.substr(0, fin.size());
+      idx_current = fin.size();
+    }
+    fout += "import os\n";
+  }
+    
   while (idx_current < fin.size()) {
     size_t idx_def = fin.find("def ", idx_current);
-    if (idx_def == string::npos) {
+    if (idx_def > 0 && (idx_def == string::npos || !isWhitespace(fin[idx_def-1]))) {
       fout += fin.substr(idx_current, fin.size()-idx_current);
       idx_current = fin.size();
       break;
     }
+//    cout << "[" << fin.substr(idx_def-10, 20) << "]\n";
     
     size_t idx_lparen = fin.find("(", idx_def+4);
     assert(idx_lparen != string::npos);
     string functionName = fin.substr(idx_def+4, idx_lparen-(idx_def+4));
     functionName = CPPUtils::strTrim(functionName);
 //    cout << "functionName: " << functionName << endl;
-    
+        
     size_t idx_colon = fin.find(":", idx_lparen);
     assert(idx_colon != string::npos);
     size_t idx_nl = fin.find("\n", idx_colon+1);
@@ -95,23 +238,34 @@ string compilePython(string fin) {
       idx_1code_line = fin.size();
     }
     string firstLine = fin.substr(idx_nl+1, idx_1code_line - (idx_nl+1));
-//    cout << "firstLine: [" << firstLine << "]" << endl;
    
     int indent = 0;
+    bool generate = true;
     size_t idx_indent = idx_nl+1;
     while (true) {
       assert(fin[idx_indent] != '\t');
+      if (fin[idx_indent] == '\n') {
+        generate = false;
+        break;
+      }
       if (fin[idx_indent] != ' ') break;
       indent++;
       idx_indent++;
     }
     
+    string pyCode;
     fout += fin.substr(idx_current, idx_nl+1-idx_current);
     idx_current = idx_nl + 1;
-    int lineNumber = getLineNumber(fin, idx_current);
-    string pyCode = generatePYCode(indent, lineNumber, functionName, "MY_FILE");
-    fout += pyCode;
+    if (generate) {
+      int lineNumber = getLineNumber(fin, idx_current);
+      pyCode = generatePYCode(indent, lineNumber, functionName, fileName);
+      fout += pyCode;
+    }
   }
+  
+  
+  
+  
   return fout;
 }
 
@@ -122,12 +276,8 @@ void testPython() {
   s += "   print(\"Hello\")";
   
   cout << "Python code:\n";
-  cout << compilePython(s) << endl;
+  cout << compilePython(s, "Just Testing") << endl;
 }
-
-// ****************************************************************
-vector<pair<size_t,string>> archiveCommentsAndStringLiterals;
-const char charArchive = 0x02;
 
 int getLineNumber(string in, size_t idx_end) {
   int lineNumber = 1;
@@ -202,7 +352,7 @@ int main(int argc, char* argv[]) {
 //    cerr << "Usage: <file_to_augment>\n";
 //    return 1;
 //  }
-  
+    
   string fileName = "";
   string prefix = "";
   bool useModifiedFilename = false;
@@ -210,11 +360,15 @@ int main(int argc, char* argv[]) {
     fileName = string(argv[1]);
   } else {
     useModifiedFilename = true;
-    fileName = "/Users/magnushyttsten/tmp/embeddings.py";
+    fileName = "/Users/magnushyttsten/tmp/array_ops.py";
   }
   if (argc >= 3) {
     prefix = string(argv[2]);
   }
+  
+//  testPython();
+//  if (true) return -1;
+
   
   // TODO: Gets tricked to say function TF_LOCKS_EXCLUDED
   // Status SetGraph(Sqlite* db, uint64 now, double computed_time,
@@ -232,7 +386,7 @@ int main(int argc, char* argv[]) {
     "RunWriter",  // TODO: Same as IdAllocator
     "SummaryDbWriter",  // TODO: Same as IdAllocator
     "CachedInterpolationCalculator",  // TODO: Same as above tensorflow/tensorflow/core/kernels/image/resize_bicubic_op.cc
-    "CSRSparseMatrix"  // TODO: As above, tensorflow/tensorflow/core/kernels/sparse/sparse_matrix.h
+    "CSRSparseMatrix",  // TODO: As above, tensorflow/tensorflow/core/kernels/sparse/sparse_matrix.h
     "mutex::lock",
     "mutex::unlock",
     "mu_cast"
@@ -244,12 +398,14 @@ int main(int argc, char* argv[]) {
     "tensorflow/tensorflow/lite/c/common.",
     "tensorflow/tensorflow/lite/c/c_test.",
     "tensorflow/tensorflow/lite/c/c_test.",
-    "tensorflow/tensorflow/lite/experimental/microfrontend/lib/",
+    "tensorflow/tensorflow/lite/experimental/microfrontend/",
     "tensorflow/tensorflow/lite/micro/examples/micro_speech/",
     "tensorflow/tensorflow/lite/micro/examples/person_detection/",
     "tensorflow/tensorflow/lite/micro/kernels/xtensa_hifimini_staging/xa_nnlib/algo/kernels/",
     "tensorflow/tensorflow/lite/micro/tools/make/targets/ecm3531/",
     "tensorflow/tensorflow/tools/lib_package/",
+    "tensorflow/tensorflow/python/saved_model/constants.py",  // Has a # ... def ... which confuses py parser to think it's a function
+    "tensorflow/tensorflow/python/saved_model/signature_constants.py",  // As above
     "tensorflow/tensorflow/magnus"
   };
   for (auto s: skipFiles) {
@@ -294,10 +450,12 @@ int main(int argc, char* argv[]) {
   }
   else if (PY_EXT.count(fileExtension) > 0){
     isPy = true;
-    fout = compilePython(fin);
+    fout = compilePython(fin, fileName);
+    cout << "[" << fout.substr(0, 200) << "]\n";
     if (useModifiedFilename) {
       fileName += ".mod" + fileExtension;
     }
+    decodeCommentsAndStringLiterals(fout);
     CPPUtils::fsFileWrite(fileName, fout);
     return 0;
   }
@@ -323,7 +481,7 @@ int main(int argc, char* argv[]) {
   unordered_map<string, void*> classNames;
   populateIdentifiersAfter(classNames, fin, "class ");
   populateIdentifiersAfter(classNames, fin, "struct ");
-    
+  
   CPPIndentWriter classDef;
   string className = generateClass(classDef, fileName);
   
@@ -368,9 +526,11 @@ int main(int argc, char* argv[]) {
     s = "\n" + classDef.getString() + "\n";
     fout += s;
     added_characters += s.size();
-  } else if (isH || isC) {
+  }
+  else if (isH || isC) {
     s = "\n#include <stdio.h>\n";
     s += "#include <stdlib.h>\n";
+    s += "#include <string.h>\n";
     s += "#include <sys/types.h>\n";
     s += "#include <unistd.h>\n";
     fout += s;
@@ -458,6 +618,7 @@ int main(int argc, char* argv[]) {
       }
       if (!valid) continue;
 //      cout << "...functionName: [" << functionName << "]\n";
+//      cout << "[" << fin.substr(idx_functionName_first-5, 50) << "]\n";
       if (skipFunctions.count(functionName) > 0) {
 //        cout << "A skip function: " << functionName << endl;
         continue;
@@ -617,7 +778,8 @@ int main(int argc, char* argv[]) {
       if (isCC){
         outstr += "\n   " + className + " mht_" + to_string(variableIndex) + "(, \"" + prefix + "\", \"" + fileName + "\", \"" + functionName + "\");\n";
         variableIndex++;
-      } else if (isH || isC) {
+      }
+      else if (isH || isC) {
         outstr = "\n" + genPrintf(functionName, prefix, fileName) + "\n";
       }
       else {
@@ -671,25 +833,46 @@ int main(int argc, char* argv[]) {
 }
 
 //-----------------------------------------
-string genPrintf(const string& functionName, const string& prefix, const string& fileName) {
+string genPrintf(const string& functionName, const string& prefix, const string& fileName1) {
+  string fileName = washFileName(fileName1);
   CPPIndentWriter iw;
   iw.println("char mhtracer_s[200];");
   iw.println("char mhtracer_fn[40];");
-  iw.println("sprintf(mhtracer_s, \"" + functionName + " " + prefix + " [" + MHTRACER_LINENUMBER_TAG + " @ " + fileName + "\");");
-  iw.println("char* env_path = std::getenv(\"PATH\");");
-  iw.println("if (env_path != nullptr && std::string(env_path).find(\"" + PATH_ENV_MHTRACER_FILE + "\") != std::string::npos) {");
-  iw.println("   sprintf(mhtracer_fn, \"" + MHTRACER_FILENAME_PREFIX + "%d.log\", getpid());");
-  iw.println("   FILE* mhtracer_fp = fopen(mhtracer_fn, \"a\");");
-  iw.println("   fprintf(mhtracer_fp, \"%s\", mhtracer_s);");
-  iw.println("   fclose(mhtracer_fp);");
-  iw.println("} else {");
-  iw.println("   printf(\"%s\", mhtracer_s);");
+  iw.println("int mhtracer_indent = 0;");
+  iw.println("char* mhtracer_env_path = getenv(\"PATH\");");
+  iw.println("char mhtracer_env_indent_name[20];");
+  iw.println("sprintf(mhtracer_env_indent_name, \"%s%d\", \"" + ENV_MHTRACER_INDENT + "\", getpid());");
+  iw.println("if (getenv(mhtracer_env_indent_name)) {");
+  iw.println("   mhtracer_indent = atoi(mhtracer_env_indent_name) + 3;");
+  iw.println("}");
+  iw.println("char mhtracer_space[mhtracer_indent+1];");
+  iw.println("mhtracer_space[0] = '\\0';");
+  iw.println("int mhtracer_idx = 0;");
+  iw.println("while (mhtracer_idx < mhtracer_indent) {");
+  iw.println("   mhtracer_space[mhtracer_idx] = ' ';");
+  iw.println("   mhtracer_idx++;");
+  iw.println("   if (mhtracer_idx >= mhtracer_indent) mhtracer_space[mhtracer_idx] = '\\0';");
+  iw.println("}");
+  iw.println("if (!strstr(mhtracer_env_path, \"" + PATH_ENV_MHTRACER_DISABLE + "\")) {");
+  // We cannot support indents here, because we cannot track exit to decrement indent (as with C++ destructor)
+  iw.println("   sprintf(mhtracer_s, \"%s%s\", mhtracer_space, \"" + functionName + " " + prefix + " [h/c: " + MHTRACER_LINENUMBER_TAG + " @ " + fileName + "]\\n\");");
+  iw.println("   if (mhtracer_env_path && strstr(mhtracer_env_path, \"" + PATH_ENV_MHTRACER_FILE + "\")) {");
+  iw.println("      sprintf(mhtracer_fn, \"" + MHTRACER_FILENAME_PREFIX + "%d.log\", getpid());");
+  iw.println("      FILE* mhtracer_fp = fopen(mhtracer_fn, \"a\");");
+  iw.println("      fprintf(mhtracer_fp, \"%s\", mhtracer_s);");
+  iw.println("      fclose(mhtracer_fp);");
+  iw.println("   } else {");
+  iw.println("      printf(\"%s\", mhtracer_s);");
+  iw.println("   }");
   iw.println("}");
   return iw.getString();
 }
 
 //-----------------------------------------
-string generateClass(CPPIndentWriter& iw, string fileName) {
+string generateClass(CPPIndentWriter& iw, string fileName1) {
+  string fileName = CPPUtils::strReplace(fileName1, "tensorflow", "tf");
+  fileName = CPPUtils::strReplace(fileName, "framework", "fw");
+
   iw.println("#include <iostream>"); // std::cout
   iw.println("#include <fstream>");
   iw.println("#include <thread>");   // std::thread, std::thread::id, std::this_thread::get_id
@@ -716,37 +899,33 @@ string generateClass(CPPIndentWriter& iw, string fileName) {
   iw.println("};");
   
   iw.println(className + "::" + className + "(int lineNumber, std::string prefix, std::string fileName, std::string functionName) {");
+  iw.println("   char* env_path = std::getenv(\"PATH\");");
+  iw.println("   if (env_path != nullptr && std::string(env_path).find(\"" + PATH_ENV_MHTRACER_DISABLE + "\") != std::string::npos) {");
+  iw.println("      return;");
+  iw.println("   }");
   iw.println("   _functionName = functionName;");
-  iw.println("   char* env_indent = std::getenv(\"" + ENV_MHTRACER_INDENT + "\");");
+  iw.println("   std::string env_pid = std::to_string(getpid());");
+  iw.println("   char* env_indent = std::getenv(\"" + ENV_MHTRACER_INDENT + "env_pid\");");
   iw.println("   if (env_indent != nullptr) _indent = std::stoi(std::string(env_indent));");
   iw.println("   _s.assign(_indent, ' ');");
   iw.println("   std::string ostr = _s + functionName + \" \" + prefix + \" [\" + std::to_string(lineNumber) + \" @ \" + fileName + \"]\";");
-  iw.println("   char* env_path = std::getenv(\"PATH\");");
   iw.println("   if (env_path != nullptr && std::string(env_path).find(\"" + PATH_ENV_MHTRACER_FILE + "\") != std::string::npos) {");
   iw.println("      _isFile = true;");
-  iw.println("      _fileName = \"" + MHTRACER_FILENAME_PREFIX + "\" + std::to_string(getpid()) + \".log\";");
+  iw.println("      _fileName = \"" + MHTRACER_FILENAME_PREFIX + "\" + env_pid + \".log\";");
   iw.println("      std::ofstream os;");
-  iw.println("      os.open(_fileName);");
+  iw.println("      os.open(_fileName, std::ofstream::out | std::ofstream::app);");
   iw.println("      os << ostr << \"\\n\";");
   iw.println("      os.close();");
   iw.println("   } else {");
   iw.println("      std::cout << ostr << \"\\n\";");
   iw.println("   }");
   iw.println("   _indent += 3;");
-  iw.println("   setenv(\"" + ENV_MHTRACER_INDENT + "\", std::to_string(_indent).c_str(), 1);");
+  iw.println("   setenv(\"" + ENV_MHTRACER_INDENT + "env_pid\", std::to_string(_indent).c_str(), 1);");
   iw.println("}");
   iw.println(className + "::~" + className + "() {");
-//  iw.println("   _indent -= 3;");
-//  iw.println("   setenv(\"MHTRACER_INDENT\", std::to_string(_indent).c_str(), 1);");
-//  iw.println("   std::string ostr = _s + \"}\";");
-//  iw.println("   if (_isFile) {");
-//  iw.println("      std::ofstream os;");
-//  iw.println("      os.open(_fileName);");
-//  iw.println("      os << ostr << \"\\n\";");
-//  iw.println("      os.close();");
-//  iw.println("   } else {");
-//  iw.println("      std::cout << ostr << \"\\n\";");
-//  iw.println("   }");
+  iw.println("   _indent -= 3;");
+  iw.println("   std::string env_pid = std::to_string(getpid());");
+  iw.println("   setenv(\"" + ENV_MHTRACER_INDENT + "env_pid\", std::to_string(_indent).c_str(), 1);");
   iw.println("}");
   return className;
 }
@@ -770,6 +949,10 @@ void decodeCommentsAndStringLiterals(string& fin) {
     int length = idx-start;
     while (length > 0) {
       int clength = archiveCommentsAndStringLiterals[idx_archive].second.size();
+//      cout << "Archive: " << archiveCommentsAndStringLiterals[idx_archive].second << "\n";
+//      if (archiveCommentsAndStringLiterals[idx_archive].second == "# this is the end") {
+//        cout << "Hello\n";
+//      }
       fin.replace(start, clength, archiveCommentsAndStringLiterals[idx_archive].second);
       idx_archive++;
       length -= clength;
