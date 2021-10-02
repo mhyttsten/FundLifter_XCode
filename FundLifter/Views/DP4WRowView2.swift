@@ -98,7 +98,7 @@ struct DP4WRowView2: View {
             .foregroundColor(getColor(isW: true, index: 0))
           Text("\(getString(isW: true, index: 1))")
             .font(.subheadline)
-            .foregroundColor(getColor(isW: true, index: 2))
+            .foregroundColor(getColor(isW: true, index: 1))
           Text("\(getString(isW: true, index: 2))")
             .font(.subheadline)
             .foregroundColor(getColor(isW: true, index: 2))
@@ -134,4 +134,3 @@ struct DP4WRowView2: View {
 ////    DP4WRowView2(displayName: "PPM", dp4ModelKey: "PPM")
 //  }
 //}
-

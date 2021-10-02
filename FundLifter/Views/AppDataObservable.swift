@@ -7,7 +7,7 @@ public class AppDataObservable: ObservableObject {
   @Published var pubMessage = "Initializing"
   @Published var pubFundDBCreationTime = "No Fund DB File"
   @Published var pubPortfolios = [DP4WModel]()
-  @Published var pubPortfolio2DP4Funds = [String: [DP4WModel]]()
+  @Published var pubPortfolio2DP4Funds = [String: [DP4WModel]]()  // Not populated for PPM portfolio
 
   @Published var pubDP4ModelHM = [String: DP4WModel]()  // Funds as well as portfolios
   @Published var pubType2DP4Funds = [String: [DP4WModel]]()
@@ -96,19 +96,18 @@ public class AppDataObservable: ObservableObject {
       }
       
       // Get portfolios from GCS
-      logFileAppend(s: "DQ Get portfolios from GCS")
+      logFileAppend(s: "AppDataObservable: Get portfolios from GCS")
       AppDataObservable.initializeEmptyPortfolios()
       FileGCSUtils.gcsRead(fromFile: FLConstants.PORTFOLIO_FILENAME_GCS) {
-        logFileAppend(s: "DQ GCS portfolios async entered")
+        logFileAppend(s: "GCS portfolios async entered")
 
         var message = "Initializing"
         if let error=$1 {
           message = "Error GCS fetching portfolio: \(error)"
-          logFileAppend(s: "DQ GCS portfolios error")
+          logFileAppend(s: "GCS portfolios error: \(error)")
         }
         else if let data=$0 {
-          logFileAppend(s: "DQ GCS portfolios success")
-          // _portfolios
+          logFileAppend(s: "GCS portfolios read success, will now decode")
           let (error, portfolioCount) = portfolioDecode(data: data)
           if let error=error {
             message = "Portfolio error: \(error)"
@@ -116,23 +115,26 @@ public class AppDataObservable: ObservableObject {
             message = "Funds: \(AppDataObservable._allFunds.count), Portfolios: \(portfolioCount)"
           }
         }
-        logFileAppend(s: "DQ GCS portfolios done")
+        logFileAppend(s: "GCS portfolios done")
 
         // Portfolio retrieved from GCS
         // Now initialize all @Published structures
         DispatchQueue.main.async { [weak self] in
-          logFileAppend(s: "DQ updating presentables")
+          logFileAppend(s: "Updating all @Published presentables")
 
           // Initialize status message on # funds & portfolios
+          logFileAppend(s: "Message: \(message)")
           self?.pubMessage = message
           
           // Create DP4W for all funds
+          logFileAppend(s: "Number of funds: \(AppDataObservable._allFundsDP4.count)")
           for fi in AppDataObservable._allFundsDP4 {
             self?.pubDP4ModelHM[fi.id] = fi
           }
           
-          // Display the portfolios
-           for p in AppDataObservable._portfolios.keys.sorted() {
+          // Display the portfolios (pubPortfolio2DP4Funds)
+          for p in AppDataObservable._portfolios.keys.sorted() {
+            logFileAppend(s: "Processing porfolio: \(p)")
             let dp4ModelP = DataModelsCalculator.getDP4WModelForFunds(fqName: p, displayName: p, subTitle: "", funds: AppDataObservable._portfolios[p]!)
             self?.pubPortfolios.append(dp4ModelP)
             self?.pubDP4ModelHM[p] = dp4ModelP
@@ -141,7 +143,9 @@ public class AppDataObservable: ObservableObject {
               self?.pubPortfolio2DP4Funds[p] = [DP4WModel]()
             }
             
+            logFileAppend(s: "   Number of funds in portfolio: \(AppDataObservable._portfolios[p]!.count)")
             for fi in AppDataObservable._portfolios[p]! {
+              logFileAppend(s: "   Appending DP4WModel to pubPortfolio2DP4Funds for portfolio: \(p)")
               let dp4w = self!.pubDP4ModelHM[fi.typeAndName]!
               self?.pubPortfolio2DP4Funds[p]!.append(dp4w)
             }
@@ -151,11 +155,11 @@ public class AppDataObservable: ObservableObject {
           for fi in AppDataObservable._allFunds {
             if self?.pubType2DP4Funds.keys.contains(fi._type) == false {
               self?.pubType2DP4Funds[fi._type] = [DP4WModel]()
-              print("AppDataObservable, adding portfolio id: \(fi._type)")
             }
             guard let a = self?.pubDP4ModelHM[fi.typeAndName] else {
               fatalError("Fund expected to exist: \(fi.typeAndName)")
             }
+            // logFileAppend(s: "   Appending DP4WModel to pubType2DP4Funds for type: \(fi._type)")
             self?.pubType2DP4Funds[fi._type]!.append(a)
           }
           
@@ -198,7 +202,7 @@ public class AppDataObservable: ObservableObject {
         }  // End: DispatchQueue.main.async
         logFileAppend(s: "GCS portfolio fetched exit")
       }  // End: GCS portfolio file fetched closure
-      logFileAppend(s: "DQ global exit")
+      logFileAppend(s: "AppDataObservalbe, Global exit")
     }  // End: DispatchQueue.global
     logFileAppend(s: "AppDataObservable.initialize exit")
   }  // End: initialize function
@@ -435,27 +439,26 @@ public class AppDataObservable: ObservableObject {
 }
 
 public func portfolioDecode(data: Data) -> (String?, Int) {
+  logFileAppend(s: "AppDataObservable.portfolioDecode")
   var cindex = 0
   var portfolioCount = 0
   var errorMsg: String? = nil
   while cindex < data.count {
     var type = ""
     (cindex, type) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
-    print("type: \(type)")
+    logFileAppend(s: "   portfolioName: \(type)")
     
     var count = 0
     (cindex, count) = FLBinaryIOUtils.readIntSwift(data: data, sindex: cindex)
     for _ in 0..<count {
       var typeAndName = ""
       (cindex, typeAndName) = FLBinaryIOUtils.readUTFSwift(data: data, sindex: cindex)
-      print("...typeAndName: \(typeAndName)")
+      logFileAppend(s: "      typeAndName: \(typeAndName)")
       if let fund = AppDataObservable._typeAndName2Fund[typeAndName] {
-        if errorMsg != nil {
-          AppDataObservable._portfolios[type]!.append(fund)
-        }
+        logFileAppend(s: "      Appended fund to AppDataObservable._portfolios for key: \(type)")
+        AppDataObservable._portfolios[type]!.append(fund)
       } else {
         logFileAppend(s: "*** Portfolio error, fund not found: \(typeAndName)")
-        print("*** portfolioDecode, fund not found: \(typeAndName)")
         AppDataObservable._portfolios[type] = [D_FundInfo]()
         errorMsg = "Not found: \(typeAndName)"
       }

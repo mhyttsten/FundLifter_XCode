@@ -16,6 +16,18 @@ fileprivate var logFilePath : String {
 
 fileprivate var logFileData: String = ""
 func logFileAppend(s: String) {
+  logFileAppendStdout(s: s)
+}
+func logFileAppendStdout(s: String) {
+  let now = Date()
+  let df = DateFormatter()
+  df.dateFormat = "yyyy-MM-dd HH:mm:ss"
+  let nowStr = df.string(from: now)
+  let logStr = "\(nowStr): \(s)"
+  print("\(logStr)")
+
+}
+func logFileAppendFile(s: String) {
   let now = Date()
   let df = DateFormatter()
   df.dateFormat = "yyyy-MM-dd HH:mm:ss"

@@ -17,7 +17,7 @@ struct DP4WRowView: View {
   init(displayName: String, dp4ModelKey: String) {
     self.displayName = displayName
     self.key = dp4ModelKey
-    print("DP4RowView.init: \(dp4ModelKey)")
+    print("DP4RowView.init, key: \(self.key), displayName: \(self.displayName)")
   }
 
   var body: some View {
@@ -37,12 +37,15 @@ struct DP4WRowView: View {
           Text("\(doubleOptToString(value: settings.pubDP4ModelHM[key]!.dpWs[0]))")
             .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.pubDP4ModelHM[key]!.dpWs[0], percent: settings.pubDP4ModelHM[key]!.dpWsValidityPercent[0]))
+
           Text("\(doubleOptToString(value: settings.pubDP4ModelHM[key]!.dpWs[1]))")
             .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.pubDP4ModelHM[key]!.dpWs[1], percent: settings.pubDP4ModelHM[key]!.dpWsValidityPercent[1]))
+
           Text("\(doubleOptToString(value: settings.pubDP4ModelHM[key]!.dpWs[2]))")
             .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.pubDP4ModelHM[key]!.dpWs[2], percent: settings.pubDP4ModelHM[key]!.dpWsValidityPercent[2]))
+
           Text("\(doubleOptToString(value: settings.pubDP4ModelHM[key]!.dpWs[3]))")
             .font(.subheadline)
             .foregroundColor(doubleOptToColor(value: settings.pubDP4ModelHM[key]!.dpWs[3], percent: settings.pubDP4ModelHM[key]!.dpWsValidityPercent[3]))
@@ -65,7 +68,7 @@ struct DP4WRowView: View {
         }
       }
     }.onAppear {
-//      print("Printing settings.dp4ModelHM: \(self.settings.dp4ModelHM[self.key]!)")
+      print("DP4WRowView.body.onAppear")
     }
   }
 }

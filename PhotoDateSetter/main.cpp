@@ -1,9 +1,9 @@
 //
 //  main.cpp
-//  AllAboutCPP
+//  PhotoDateSetter
 //
-//  Created by Magnus Hyttsten on 8/10/20.
-//  Copyright © 2020 Magnus Hyttsten. All rights reserved.
+//  Created by Magnus Hyttsten on 4/24/21.
+//  Copyright © 2021 Magnus Hyttsten. All rights reserved.
 //
 
 #include <iostream>

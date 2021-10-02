@@ -6,8 +6,6 @@
 //  Copyright © 2020 Magnus Hyttsten. All rights reserved.
 //
 
-#include "CPPIndentWriter.hpp"
-
 #include <cstring>
 #include <chrono>
 #include <complex>
@@ -35,6 +33,10 @@
 
 int main(int argc, char* argv[]) {
   using namespace std;
+  std::pair p = std::make_pair("hello", 20);
+  auto a = std::get<0>(p);
+  cout << "a: " << p.first << endl;
+
   void chapter01(); chapter01();
   void chapter02(); chapter02();
   void chapter03(); chapter03();
@@ -65,8 +67,11 @@ void chapter01() {
   int i0 = 3;
   auto i1 = 3;  // Creates int
   int i2 = 3.14;  // Implicitly truncates 3.14
-  // int i3 = { 3.14 };  // Gives error
-  // int i4 { 3.14 };
+  // int i3 = { 3.14 };  // Cannot be narrows to int in initializer list
+  // int i4 { 3.14 };    // Cannot be narrows to int in initializer list
+  char c1 = { 3 };
+  int i5 { 3 };
+  int i6 { '3' };
   std::string s1 {"hello"};
   
   // Requires #include <vector>
@@ -138,20 +143,19 @@ void chapter02() {
   };
   A a(5); a[0] = 10; cout << "Value of _a: " << a._a << endl;
   
-  // U is a point to memory, refer to that memory thorugh one of these members
+  // U is a point to memory, refer to that memory through one of these members
   union U {
     int size;
     char string[];
   };
   
   // Don't use unions though, use variant, need #include <variant>
-  // TODO: For some reason below does not complie
-  // std::variant<int, float> v;  // v can hold either an int or float
-  // int i01 = std::get<int>(v);
-  // int i01 = std::get<0>(v);  // Same as get<int>
-  // assert(std::holds_alternative<int>(v));
-  // try { std::get<float>(v); }
-  // catch (const std::bad_variant_access&) { }
+   std::variant<int, float> v;  // v can hold either an int or float
+   int i01 = std::get<int>(v);
+   int i02 = std::get<0>(v);  // Same as get<int>
+   assert(std::holds_alternative<int>(v));
+   try { std::get<float>(v); }
+   catch (const std::bad_variant_access&) { }
   
   enum class Binary { zero, one };
   Binary b0 = Binary::zero;
@@ -817,8 +821,8 @@ void chapter10() {
   // byte sequence -> stream buffer -> istream -> { char, int, tuple }
   
   // #include <ostream>
-  cout << "hello" << endl;  // Standard output stream
-  cerr << "error" << endl;  // Standard error stream
+  cout << "Printing on stdout" << endl;  // Standard output stream
+  cerr << "Printing on stderr" << endl;  // Standard error stream
   
   //    #include <istream>
   // Read of integer is terminated that is not a digit, skips initial whitespace

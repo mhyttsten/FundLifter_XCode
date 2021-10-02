@@ -19,11 +19,20 @@
 #include <string>
 #include <sstream>
 #include <time.h>
+#include <set>
 #include <unistd.h>
 #include <filesystem>
 using namespace std;
 
-vector<string> CPPUtils::strSplit(string argStr, string delim, bool trim) {
+vector<string> CPPUtils::getLines(istream& is) {
+  vector<string> r;
+  std::string line;
+  while (getline(is, line)) {
+    r.push_back(line);
+  }
+  return r;
+}
+vector<string> CPPUtils::strSplit(const string& argStr, const string& delim, bool trim) {
   string inStr = argStr;
   vector<string> r;
   
@@ -50,12 +59,14 @@ vector<string> CPPUtils::strSplit(string argStr, string delim, bool trim) {
   return r;
 }
 
-string CPPUtils::strTrim(string inStr) {
+string CPPUtils::strTrim(const string& inStr, set<char> trim) {
+  trim.insert({' ', '\n', '\t', '\r'});  // Trim is a copy (default empty) so ok
   string s = inStr;
   bool c = false;
   do {
+    if (s.size() == 0) break;
     c = false;
-    if (s.find(' ') == 0 || s.find('\n') == 0 || s.find('\t') == 0 || s.find('\r') == 0) {
+    if (trim.count(s[0]) > 0) {
       s.erase(s.begin());
       c = true;
     }
@@ -64,15 +75,13 @@ string CPPUtils::strTrim(string inStr) {
   do {
     c = false;
     if (s.length() == 0) return "";
-    auto pos = s.length() - 1;
-    if (s.rfind(' ') == pos || s.rfind('\n') == pos || s.rfind('\t') == pos || s.rfind('\r') == pos) {
+    if (trim.count(s[s.size()-1]) > 0) {
       s.erase(s.end()-1);
       c = true;
     }
   } while (c);
   return s;
 }
-
 
 string CPPUtils::dateNowAs_YYMMDDSHHMMSS() {
   std::time_t t = std::time(0);
@@ -83,7 +92,27 @@ string CPPUtils::dateNowAs_YYMMDDSHHMMSS() {
   return timeNow;
 }
 
-int CPPUtils::strCountOccurrences(string s, string occ) {
+tm CPPUtils::dateTMFrom_YYYYCMMCDDSHHMMSS(string str) {
+  // Initialize from localtime to get current DST settings, etc
+  time_t rawtime;
+  time (&rawtime);
+  tm* tml = localtime(&rawtime);
+
+  vector<string> cs = strSplit(str, ":");
+  int yyyy = stoi(cs[0])-1900;
+  int mm = stoi(cs[1]) - 1;
+  
+  tml->tm_year = yyyy;
+  tml->tm_mon = mm;
+  vector<string> ddhh =  strSplit(cs[2], " ");
+  tml->tm_mday = stoi(ddhh[0]);
+  tml->tm_hour = stoi(ddhh[1]);
+  tml->tm_min = stoi(cs[3]);
+  tml->tm_sec = stoi(cs[4])+1;
+  return *tml;
+}
+
+int CPPUtils::strCountOccurrences(const string& s, const string& occ) {
   size_t curr = 0;
   int count = 0;
   while (true) {
@@ -95,7 +124,7 @@ int CPPUtils::strCountOccurrences(string s, string occ) {
   return count;
 }
 
-string CPPUtils::strReplace(string inputStr, string strOld, string strNew) {
+string CPPUtils::strReplace(const string& inputStr, const string& strOld, const string& strNew) {
    string str = inputStr;
    size_t pos = str.find(strOld);
    if (pos == string::npos) return str;
@@ -152,7 +181,7 @@ string CPPUtils::getMyProgramName() {
   return result;
 }
 
-vector<string> CPPUtils::fsGetDirectoryFiles(string directory) {
+vector<string> CPPUtils::fsGetDirectoryFiles(const string& directory) {
   vector<string> r;
   for (const auto & entry : std::__fs::filesystem::directory_iterator(directory)) {
     r.push_back(entry.path());
@@ -160,7 +189,7 @@ vector<string> CPPUtils::fsGetDirectoryFiles(string directory) {
   return r;
 }
 
-vector<string> CPPUtils::fsFileReadToLines(string file) {
+vector<string> CPPUtils::fsFileReadToLines(const string& file) {
   ifstream infile(file);
   assert(infile);
   string line;
@@ -171,14 +200,29 @@ vector<string> CPPUtils::fsFileReadToLines(string file) {
   return flines;
 }
 
-string CPPUtils::fsFileReadToString(string file) {
+bool CPPUtils::strEndsWith(const string& s, const string& match) {
+  size_t idx = s.find(match);
+  if (idx != string::npos && idx+match.size() == s.size()) {
+    return true;
+  }
+  return false;
+}
+bool CPPUtils::strStartsWith(const string& s, const string& match) {
+  size_t idx = s.find(match);
+  if (idx != string::npos && idx == 0) {
+    return true;
+  }
+  return false;
+}
+
+string CPPUtils::fsFileReadToString(const string& file) {
   std::ifstream f(file);
   std::stringstream buffer;
   buffer << f.rdbuf();
   return buffer.str();
 }
 
-void CPPUtils::fsFileWrite(string file, string content) {
+void CPPUtils::fsFileWrite(const string& file, const string& content) {
   ofstream os(file);
   os.write(content.c_str(), sizeof(char)*content.size());
   os.close();

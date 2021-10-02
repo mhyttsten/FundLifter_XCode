@@ -116,7 +116,7 @@ struct TopFundsView: View {
       }
     }
     .onAppear {
-      print("TestView.onAppear")
+      print("TopFundsView.onAppear")
 //      self.initializeFundList()
     }
   }
@@ -135,6 +135,8 @@ struct TopFundsView: View {
   }
   
   func getFundList() -> [DP4WModel] {
+    print("TopFundsView.getFundList, title: \(self.title), quantity: \(quantity)")
+    print("   dp4ws.size: \(dp4ws.count)")
     var incl = [DP4WModel]()
     var excl = [DP4WModel]()
 
@@ -161,11 +163,14 @@ struct TopFundsView: View {
       incl = Array(incl[0..<rowLimit!])
     }
     
+    print("TopFundsView, before DispatchQueue, incl.size: \(incl.count)")
     DispatchQueue.main.async {
+      print("TopFundsView.DispatchQueue, incl.size: \(incl.count)")
       self.coverageMessage = coverageMessage
 //      self.fundList.removeAll()
       for (idx,f) in incl.enumerated() {
         var f = f
+        print("TopFundsView.DispatchQueue, displayName: \(f.displayName)")
         f.displayName = "\(idx): \(f.displayName)"
 //        self.fundList.append(f)
       }
