@@ -83,7 +83,7 @@ string CPPUtils::strTrim(const string& inStr, set<char> trim) {
   return s;
 }
 
-string CPPUtils::dateNowAs_YYMMDDSHHMMSS() {
+string CPPUtils::dateNowAs_YYMMDDspcHHMMSS() {
   std::time_t t = std::time(0);
   std::tm tm = *std::localtime(&t);
   char timeNow[14];
@@ -92,24 +92,81 @@ string CPPUtils::dateNowAs_YYMMDDSHHMMSS() {
   return timeNow;
 }
 
-tm CPPUtils::dateTMFrom_YYYYCMMCDDSHHMMSS(string str) {
-  // Initialize from localtime to get current DST settings, etc
-  time_t rawtime;
-  time (&rawtime);
-  tm* tml = localtime(&rawtime);
+tm CPPUtils::date_YYYYcolMMcolDDspcHHcolMMcolSS_To_tm(string str) {
+   // Initialize from localtime to get current DST settings, etc
+   time_t rawtime;
+   time (&rawtime);
+   tm* tml = localtime(&rawtime);
+   
+   vector<string> csDateTime = strSplit(str, " ");
+   vector<string> csDate = strSplit(csDateTime[0], ":");
+   vector<string> csTime = strSplit(csDateTime[1], ":");
+   
+   tml->tm_year = stoi(strTrim(csDate[0]))-1900;
+   tml->tm_mon = stoi(strTrim(csDate[1])) - 1;
+   tml->tm_mday = stoi(strTrim(csDate[2]));
+   tml->tm_hour = stoi(strTrim(csTime[0]));
+   tml->tm_min = stoi(strTrim(csTime[1]));
+   tml->tm_sec = stoi(strTrim(csTime[2]));
+   
+   // Magic, need to adjust DST based on date & time, otherwise hour might change later to accomodate for DST
+   tm tmDetectIsDST = *tml;
+   mktime(&tmDetectIsDST);
+   tml->tm_isdst = tmDetectIsDST.tm_isdst;
+   
+   return *tml;
+}
 
-  vector<string> cs = strSplit(str, ":");
-  int yyyy = stoi(cs[0])-1900;
-  int mm = stoi(cs[1]) - 1;
-  
-  tml->tm_year = yyyy;
-  tml->tm_mon = mm;
-  vector<string> ddhh =  strSplit(cs[2], " ");
-  tml->tm_mday = stoi(ddhh[0]);
-  tml->tm_hour = stoi(ddhh[1]);
-  tml->tm_min = stoi(cs[3]);
-  tml->tm_sec = stoi(cs[4])+1;
-  return *tml;
+tm CPPUtils::date_UnixlslT_to_tm(string str) {
+   // Initialize from localtime to get current DST settings, etc
+   time_t rawtime;
+   time (&rawtime);
+   tm* tml = localtime(&rawtime);
+   
+   vector<string> csDateTime = strSplit(str, " ");
+   vector<string> csTime = strSplit(csDateTime[7], ":");
+   string mm = csDateTime[5];
+   string dd = csDateTime[6];
+   string yyyy = csDateTime[8];
+   
+   int mmInt = -1;
+   if (mm == "Jan") mmInt = 1;
+   else if (mm == "Feb") mmInt = 2;
+   else if (mm == "Mar") mmInt = 3;
+   else if (mm == "Apr") mmInt = 4;
+   else if (mm == "May") mmInt = 5;
+   else if (mm == "Jun") mmInt = 6;
+   else if (mm == "Jul") mmInt = 7;
+   else if (mm == "Aug") mmInt = 8;
+   else if (mm == "Sep") mmInt = 9;
+   else if (mm == "Oct") mmInt = 10;
+   else if (mm == "Nov") mmInt = 11;
+   else if (mm == "Dec") mmInt = 12;
+   else {
+      cerr << "ERROR, count not match month string from Unix timestamp (ls -lT): " << mm << endl;
+      exit(-1);
+   }
+
+   tml->tm_year = stoi(strTrim(yyyy))-1900;
+   tml->tm_mon = mmInt - 1;
+   tml->tm_mday = stoi(dd);
+   tml->tm_hour = stoi(strTrim(csTime[0]));
+   tml->tm_min = stoi(strTrim(csTime[1]));
+   tml->tm_sec = stoi(strTrim(csTime[2]));
+   
+   // Magic, need to adjust DST based on date & time, otherwise hour might change later to accomodate for DST
+   tm tmDetectIsDST = *tml;
+   mktime(&tmDetectIsDST);
+   tml->tm_isdst = tmDetectIsDST.tm_isdst;
+   
+   return *tml;
+}
+
+string CPPUtils::date_tm_To_YYYYcolMMcolDDspcHHcolMMcolSS(const tm& tme) {
+   char buffer[20];
+   std::strftime(buffer, 20, "%Y:%m:%d %H:%M:%S", &tme);
+   string dateStr = string(buffer);
+   return dateStr;
 }
 
 int CPPUtils::strCountOccurrences(const string& s, const string& occ) {
@@ -227,4 +284,12 @@ void CPPUtils::fsFileWrite(const string& file, const string& content) {
   os.write(content.c_str(), sizeof(char)*content.size());
   os.close();
 }
+
+bool CPPUtils::fsFileRemove(const string& file) {
+   int r = remove(file.c_str());
+   if (r == 0)
+      return true;
+   return false;
+}
+
 
