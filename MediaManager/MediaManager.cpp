@@ -76,7 +76,7 @@ string CMD_SETN = "-setn";
 string CMD_NORMALIZE = "-normalize";
 
 int main(int argc, const char * argv[]) {
-   std::cout << endl << "Welcome to MediaManager!\n";
+   std::cout << endl << "Welcome to MediaManager v2.0!\n";
    
 //   vector<unsigned long long> tmpv;
 //   vector<int> tmpv;
