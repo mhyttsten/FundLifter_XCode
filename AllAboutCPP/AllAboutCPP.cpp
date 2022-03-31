@@ -31,29 +31,31 @@
 #include <vector>
 #include <variant>
 
+#include "CPPIndentWriter.h"
+
 int main(int argc, char* argv[]) {
   using namespace std;
-  std::pair p = std::make_pair("hello", 20);
-  auto a = std::get<0>(p);
-  cout << "a: " << p.first << endl;
-
-  void chapter01(); chapter01();
-  void chapter02(); chapter02();
-  void chapter03(); chapter03();
-  void chapter04(); chapter04();
-  void chapter05(); chapter05();
-  void chapter06(); chapter06();
-  void chapter07(); chapter07();
-  void chapter08(); chapter08();
-  void chapter09(); chapter09();
-  void chapter10(); chapter10();
-  void chapter11(); chapter11();
-  void chapter12(); chapter12();
-  void chapter13(); chapter13();
-  void chapter14(); chapter14();
-  void chapter15(); chapter15();
-
-  void utils(); utils();
+//  std::pair p = std::make_pair("hello", 20);
+//  auto a = std::get<0>(p);
+//  cout << "a: " << p.first << endl;
+//
+//  void chapter01(); chapter01();
+//  void chapter02(); chapter02();
+//  void chapter03(); chapter03();
+//  void chapter04(); chapter04();
+//  void chapter05(); chapter05();
+//  void chapter06(); chapter06();
+//  void chapter07(); chapter07();
+//  void chapter08(); chapter08();
+//  void chapter09(); chapter09();
+//  void chapter10(); chapter10();
+//  void chapter11(); chapter11();
+//  void chapter12(); chapter12();
+//  void chapter13(); chapter13();
+//  void chapter14(); chapter14();
+//  void chapter15(); chapter15();
+//
+//  void utils(); utils();
   void coding_problems(); coding_problems();
 }
 
@@ -1628,16 +1630,19 @@ void utils()  {
 }
 
 // **********************************************************************
+string doit(const string& in);
 void coding_problems() {
-  cout << "\ncoding_problems\n";
-  string sortByOccurrence_um(const string& str);
-  cout << "sortByOccurrence_um: [" << sortByOccurrence_um("This is an example string") << "]" << '\n';
-  
-  bool isPeriodic(int period, const string& str);
-  cout << "isPeriodic: " << isPeriodic(3, "abcabcacb") << '\n';
-  
-  bool isBalancedBTMain();
-  cout << "isBalancedBT: " << isBalancedBTMain() << '\n';
+   doit("This is a string");
+   
+//  cout << "\ncoding_problems\n";
+//  string sortByOccurrence_um(const string& str);
+//  cout << "sortByOccurrence_um: [" << sortByOccurrence_um("This is an example string") << "]" << '\n';
+//
+//  bool isPeriodic(int period, const string& str);
+//  cout << "isPeriodic: " << isPeriodic(3, "abcabcacb") << '\n';
+//
+//  bool isBalancedBTMain();
+//  cout << "isBalancedBT: " << isBalancedBTMain() << '\n';
 
 
 }
@@ -1756,3 +1761,104 @@ string sortByOccurrence_um(const string& str) {
   
   return r;
 }
+
+string doit(const string& in) {
+   unordered_map<char,int> um;
+   for (auto e: in) {
+      if (um.count(e) == 0) {
+         um[e] += 1;
+      } else {
+         um[e] = 1;
+      }
+   }
+   
+   vector<pair<char,int>> v(um.begin(), um.end());
+   for (auto e: v) {
+      cout << "v: " << e.first << ", " << e.second << endl;
+   }
+   
+   sort(v.begin(), v.end(), [](const pair<char,int>& a1, const pair<char,int>& a2) {
+      return (a1.second == a2.second) ? a1.first < a2.first: a1.second > a2.second;
+   });
+   
+   string r(in.size(), 'a'),tmp;
+   for (auto e: v) {
+      tmp.assign(e.second, e.first);
+      cout << "tmp is: " << tmp << endl;
+   }
+   cout << "r is: " << r << endl;
+   return r;
+}
+
+
+/*
+ A Candy Tree contains White and Red nodes arranged thus:
+ Every node has exactly two children.
+ The left child of a White node is White and the right child is Red.
+ The left child of a Red node is Red and the right child is White.
+ For example, expanded to 5 levels:
+                   W
+         W                   R
+    W         R         R         W
+  W    R    R    W    R    W    W    R
+ W R  R W  R W  W R  R W  W R  W R  R W
+
+
+ isWhite(true, 3, 6)
+
+ 3
+
+ 2**3-1
+
+ isWhite(2**3-1, 3, 6);
+
+ bool isWhite(bool isWhite, int totalNodes, int row, int col) {
+    indexOfSoughtNode = 2**row + col;
+    if (totalNodes/2 < indexOfSoughtNode) {
+       return isWhite(!isWhite, totalNodes/2, row-1, (2**(row-1)+(col/2));
+    }
+
+ }
+
+ bool isWhite(bool isWhite, int row, int col) {
+    if (row == 0) return isWhite;
+
+    int nodes = 2**(row) + (col+1)
+    int tnodes = (2**row)
+    if (nodes
+    
+    for
+
+
+
+
+ Index of level
+ Index of node
+
+ [2, 3]
+
+ W WR W RRW WR RW
+
+
+
+
+
+ Question 1
+
+ struct Node {
+    bool isWhite:
+    Node* left;
+    Node* right;
+ };
+
+ Node* createTree(int level, bool isWhite) {
+    if (level == 0) return nullptr;
+    Node* n = new Node();
+    isWhite = isWhite;
+       n.left = createTree(level-1, isWhite);
+       n.right = createTree(level-1, !isWhite);
+ return n;
+ }
+
+
+ */

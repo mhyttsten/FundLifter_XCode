@@ -59,9 +59,9 @@ string("Commands") +
 string("   Get & print Unix/exif datetime for files, also validating that all O|C|M exif dates are set\n") +
 string("      $ <cmd> -getd <files>\n") +
 string("   Set Unix/exif datetime for files\n") +
-string("      $ <cmd> -setd -date=\"YYYY:MM:DD: HH:MM:SS\" [-interval=<seconds>] <files>=\n") +
+string("      $ <cmd> -setd -date=\"YYYY:MM:DD: HH:MM:SS\" [-interval=<seconds>] <files>\n") +
 string("   Set filenames to: <prefix>_YYYYMMDDHHMMSS_<name>_nnnnn.<ext>\n") +
-string("      $ <cmd> -setn -prefix=<alphanum> -date=\"YYYY:MM:DD HH:MM:SS\" | AsExif] -name=<fname>\n") +
+string("      $ <cmd> -setn -prefix=<alphanum> -date=\"YYYY:MM:DD HH:MM:SS\" | AsExif] -name=<fname> <files>\n") +
 string("   Normalize so that all exif dates are the same, and Unix is set to them\n") +
 string("      $ <cmd> -normalize <files>\n") +
 string("\n") +
@@ -133,10 +133,10 @@ int cmd_normalize(int argc, const char* argv[]) {
       bool modify = false;
       if (de._dateOriginal._isValid) {
          if (de._dateCreate._isValid && !(de._dateOriginal == de._dateCreate)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 1: " << getStringForDates(de, unixTM._tm) << endl;
          }
          else if (de._dateModify._isValid && !(de._dateOriginal == de._dateModify)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 2: " << getStringForDates(de, unixTM._tm) << endl;
          }
          else {
             modify = true;
@@ -146,10 +146,10 @@ int cmd_normalize(int argc, const char* argv[]) {
       }
       else if (de._dateCreate._isValid) {
          if (de._dateOriginal._isValid && !(de._dateCreate == de._dateOriginal)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 3: " << getStringForDates(de, unixTM._tm) << endl;
          }
          else if (de._dateModify._isValid && !(de._dateCreate == de._dateModify)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 4: " << getStringForDates(de, unixTM._tm);
          }
          else {
             modify = true;
@@ -159,10 +159,10 @@ int cmd_normalize(int argc, const char* argv[]) {
       }
       else if (de._dateModify._isValid) {
          if (de._dateOriginal._isValid && !(de._dateModify == de._dateOriginal)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 5: " << getStringForDates(de, unixTM._tm);
          }
          else if (de._dateCreate._isValid && !(de._dateModify == de._dateCreate)) {
-            cerr << "Cannot normalize: " << getStringForDates(de, unixTM._tm);
+            cerr << "Cannot normalize 6: " << getStringForDates(de, unixTM._tm);
          }
          else {
             modify = true;
@@ -312,7 +312,7 @@ int cmd_setd(int argc, const char* argv[]) {
    argcf++;
    
    // Get the interval (if any)
-   int interval = 0;
+   int interval = 5;  // Default interval is 5s
    if (argc >= 4 && string(argv[3]).find("-interval=") == 0) {
       string sinterval = string(argv[3]);
       if (sinterval.size() <= 10) {
