@@ -22,6 +22,7 @@
 #include <set>
 #include <unistd.h>
 #include <filesystem>
+#include <unordered_map>
 using namespace std;
 
 vector<string> CPPUtils::getLines(istream& is) {
@@ -292,4 +293,37 @@ bool CPPUtils::fsFileRemove(const string& file) {
    return false;
 }
 
-
+void CPPUtils::fsDiffFiles() {
+   vector<string> vxla = CPPUtils::fsFileReadToLines("/tmp/bxla.txt");
+   vector<string> nxla = CPPUtils::fsFileReadToLines("/tmp/bnor.txt");
+   
+   unordered_map<string, int> nxlaum;
+   for (int i=0; i < nxla.size(); i++) {
+      string e = nxla[i];
+      if (e.find("tensorflow") == string::npos) {
+         continue;
+      }
+      string s = e.substr(e.find("tensorflow")+10);
+      nxlaum[s] = 1;
+   }
+   
+   for (int i=0; i < vxla.size(); i++) {
+      string e = vxla[i];
+      if (e.find("tensorflow") == string::npos) {
+         continue;
+      }
+      string s = e.substr(e.find("tensorflow")+10);
+      if (nxlaum.count(s)) {
+         string b = "/Users/magnushyttsten/products/tf-base";
+         string nfile = CPPUtils::fsFileReadToString(b+"/tf-r2.9/tensorflow"+s);
+         string xfile = CPPUtils::fsFileReadToString(b+"/tf_xla/tensorflow"+s);
+         if (nfile != xfile) {
+//            cout << s << endl;
+            cout << "diff " << b+"/tf-r2.9/tensorflow"+s << " " << b+"/tf_xla/tensorflow"+s << endl;
+            
+         } else {
+//            cout << "No diff: " << s << endl;
+         }         
+      }
+   }
+}

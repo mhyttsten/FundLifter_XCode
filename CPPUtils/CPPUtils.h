@@ -43,6 +43,8 @@ struct CPPUtils {
    static string fsFileReadToString(const string& file);
    static void fsFileWrite(const string& file, const string& content);
    static bool fsFileRemove(const string& file);  // true if removed, false if not
+   
+   static void fsDiffFiles();
 };
 
 #endif /* CPPUtils_h */
